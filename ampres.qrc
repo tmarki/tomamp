@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/images">
+        <file alias="volume">images/audio-volume-high.png</file>
+        <file alias="shuffle">images/shuffle.png</file>
+    </qresource>
+</RCC>

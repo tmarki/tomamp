@@ -17,7 +17,7 @@ SOURCES += main.cpp\
 HEADERS  += mainwindow.h \
     playlist.h
 
-FORMS    += mainwindow.ui
+FORMS    +=
 
 CONFIG += mobility
 MOBILITY = 
@@ -28,3 +28,6 @@ symbian {
     TARGET.EPOCSTACKSIZE = 0x14000
     TARGET.EPOCHEAPSIZE = 0x020000 0x800000
 }
+
+RESOURCES += \
+    ampres.qrc

@@ -1,44 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
-**
-** This file is part of the examples of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial Usage
-** Licensees holding valid Qt Commercial licenses may use this file in
-** accordance with the Qt Commercial License Agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and Nokia.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3.0 as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU General Public License version 3.0 requirements will be
-** met: http://www.gnu.org/copyleft/gpl.html.
-**
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
-** $QT_END_LICENSE$
-**
-***************************************************************************/
-
 #include <QtGui>
 #include <QtDebug>
 #include <QInputDialog>
@@ -57,11 +16,11 @@ MainWindow::MainWindow()
     mediaObject->setTickInterval(500);
     connect(mediaObject, SIGNAL(tick(qint64)), this, SLOT(tick(qint64)));
     connect(mediaObject, SIGNAL(stateChanged(Phonon::State,Phonon::State)),
-    this, SLOT(stateChanged(Phonon::State,Phonon::State)));
+        this, SLOT(stateChanged(Phonon::State,Phonon::State)));
     connect(metaInformationResolver, SIGNAL(stateChanged(Phonon::State,Phonon::State)),
-    this, SLOT(metaStateChanged(Phonon::State,Phonon::State)));
+        this, SLOT(metaStateChanged(Phonon::State,Phonon::State)));
     connect(mediaObject, SIGNAL(currentSourceChanged(Phonon::MediaSource)),
-    this, SLOT(sourceChanged(Phonon::MediaSource)));
+        this, SLOT(sourceChanged(Phonon::MediaSource)));
     connect(mediaObject, SIGNAL(aboutToFinish()), this, SLOT(aboutToFinish()));
 
     Phonon::createPath(mediaObject, audioOutput);
@@ -75,6 +34,7 @@ MainWindow::MainWindow()
     setupUi();
     timeLcd->display("00:00");
     addStringList(settings.value("lastPlaylist").toStringList());
+    audioOutput->setVolume(settings.value("volume", .5).toReal());
 }
 
 MainWindow::~MainWindow()
@@ -83,9 +43,13 @@ MainWindow::~MainWindow()
     QStringList curList;
     foreach (Phonon::MediaSource src, sources)
     {
-        curList.append(src.fileName());
+        if (src.type () == Phonon::MediaSource::LocalFile)
+            curList.append(src.fileName());
+        else
+            curList.append(src.url().toString());
     }
     settings.setValue("lastPlaylist", curList);
+    settings.setValue("volume", audioOutput->volume());
 }
 
 void MainWindow::addFiles()
@@ -201,7 +165,7 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
             }
             break;
         case Phonon::PlayingState:
-            setWindowTitle(metaInformationResolver->metaData().value("TITLE") + " - TomAmp");
+            setWindowTitle(mediaObject->metaData().value("TITLE") + " - TomAmp");
             playAction->setEnabled(false);
             pauseAction->setEnabled(true);
             stopAction->setEnabled(true);
@@ -386,18 +350,27 @@ void MainWindow::setupActions()
     repeatAction->setCheckable(true);
     repeatAction->setChecked(repeat);
     repeatAction->setShortcut(tr("Ctrl+I"));
-    shuffleAction = new QAction(style()->standardIcon(QStyle::SP_TrashIcon), tr("S&huffle"), this);
+    shuffleAction = new QAction(QIcon (QPixmap (":images/shuffle")), tr("Shuffle"), this);
     shuffleAction->setCheckable(true);
     shuffleAction->setChecked(shuffle);
     shuffleAction->setShortcut(tr("Ctrl+H"));
+    volumeAction = new QAction(QIcon (QPixmap (":images/volume")), tr("Volume"), this);
+    volumeAction->setCheckable(true);
+    volumeAction->setShortcut(tr("Ctrl+V"));
     addFilesAction = new QAction(tr("Add &File"), this);
     addFilesAction->setShortcut(tr("Ctrl+F"));
     addFoldersAction = new QAction(tr("Add F&older"), this);
     addFoldersAction->setShortcut(tr("Ctrl+O"));
     addUrlAction = new QAction(tr("Add &Url"), this);
     addUrlAction->setShortcut(tr("Ctrl+U"));
+    savePlaylistAction = new QAction (tr("Sa&ve Playlist"), this);
+    savePlaylistAction->setShortcut(tr ("Ctrl+V"));
+    loadPlaylistAction = new QAction (tr("&Load Playlist"), this);
+    loadPlaylistAction->setShortcut(tr("Ctrl+L"));
+    clearPlaylistAction = new QAction (tr("&Clear Playlist"), this);
+    clearPlaylistAction->setShortcut(tr("Ctrl+C"));
     exitAction = new QAction(tr("E&xit"), this);
-    exitAction->setShortcuts(QKeySequence::Quit);
+    exitAction->setShortcut(tr("Ctrl+X"));
     aboutAction = new QAction(tr("A&bout"), this);
     aboutAction->setShortcut(tr("Ctrl+B"));
     aboutQtAction = new QAction(tr("About &Qt"), this);
@@ -408,12 +381,70 @@ void MainWindow::setupActions()
     connect(stopAction, SIGNAL(triggered()), mediaObject, SLOT(stop()));
     connect(repeatAction, SIGNAL(triggered()), this, SLOT(repeatToggle()));
     connect(shuffleAction, SIGNAL(triggered()), this, SLOT(shuffleToggle()));
+    connect(volumeAction, SIGNAL(triggered()), this, SLOT(volumeToggle()));
     connect(addFilesAction, SIGNAL(triggered()), this, SLOT(addFiles()));
     connect(addFoldersAction, SIGNAL(triggered()), this, SLOT(addFolders()));
     connect(addUrlAction, SIGNAL(triggered()), this, SLOT(addUrl()));
+    connect (savePlaylistAction, SIGNAL (triggered()), this, SLOT (savePlaylist()));
+    connect (loadPlaylistAction, SIGNAL (triggered()), this, SLOT (loadPlaylist()));
+    connect (clearPlaylistAction, SIGNAL (triggered()), this, SLOT (clearPlaylist()));
     connect(exitAction, SIGNAL(triggered()), this, SLOT(close()));
     connect(aboutAction, SIGNAL(triggered()), this, SLOT(about()));
     connect(aboutQtAction, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
+}
+
+void MainWindow::savePlaylist()
+{
+    QString filename = QFileDialog::getSaveFileName(this, tr("Please select file name"), "", "*.m3u");
+    if (filename.isEmpty())
+        return;
+    if (filename.length() < 4 || filename.right(4).toLower() != ".m3u")
+        filename += ".m3u";
+    QFile f (filename);
+    try
+    {
+        f.open(QFile::WriteOnly);
+        for (int i = 0; i < sources.size(); ++i)
+        {
+            if (sources[i].type() == Phonon::MediaSource::Stream)
+                f.write(sources[i].url().toString().toAscii());
+            else
+                f.write (sources[i].fileName().toAscii());
+            f.write ("\n");
+        }
+        f.close ();
+    }
+    catch (...)
+    {
+        QMessageBox::critical(this, "Write error", "Could not write playlist file", QMessageBox::Ok);
+    }
+}
+
+void MainWindow::loadPlaylist()
+{
+    QString filename = QFileDialog::getOpenFileName(this, tr("Select playlist file to load"), "", "*.m3u");
+    QFile f(filename);
+    f.open (QFile::ReadOnly);
+    QString tmp = f.readAll();
+    f.close ();
+    QStringList lines = tmp.split("\n");
+    clearPlaylist();
+    foreach (QString l, lines)
+    {
+        qDebug () << "Load " << l;
+        Phonon::MediaSource source(l);
+        sources.append(source);
+    }
+    if (!sources.isEmpty())
+        metaInformationResolver->setCurrentSource(sources.at(0));
+    setupShuffleList();
+}
+
+void MainWindow::clearPlaylist()
+{
+    sources.clear();
+    while (musicTable->rowCount())
+        musicTable->removeRow(0);
 }
 
 void MainWindow::repeatToggle ()
@@ -429,6 +460,12 @@ void MainWindow::shuffleToggle ()
     settings.setValue("shuffle", QVariant (shuffle));
 }
 
+void MainWindow::volumeToggle ()
+{
+    qDebug () << "Volumetoggle: " << volumeAction->isChecked();
+    volumeSlider->setVisible(volumeAction->isChecked());
+}
+
 
 void MainWindow::setupMenus()
 {
@@ -436,6 +473,9 @@ void MainWindow::setupMenus()
     fileMenu->addAction(addFilesAction);
     fileMenu->addAction(addFoldersAction);
     fileMenu->addAction(addUrlAction);
+    fileMenu->addAction(savePlaylistAction);
+    fileMenu->addAction(loadPlaylistAction);
+    fileMenu->addAction(clearPlaylistAction);
     fileMenu->addSeparator();
     fileMenu->addAction(exitAction);
 
@@ -449,22 +489,26 @@ void MainWindow::setupUi()
     QToolBar *bar = new QToolBar;
 
     bar->setOrientation(Qt::Vertical);
+    //bar->addAction(volumeAction);
+
+    seekSlider = new Phonon::SeekSlider(this);
+    seekSlider->setMediaObject(mediaObject);
+
+    volumeSlider = new Phonon::VolumeSlider(this);
+    volumeSlider->setAudioOutput(audioOutput);
+    volumeSlider->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    volumeSlider->setOrientation(Qt::Vertical);
+    volumeSlider->setMuteVisible(false);
+//    volumeAddedAction = bar->addWidget(volumeSlider);
+//    volumeAddedAction->setVisible(false);
     bar->addAction(playAction);
     bar->addAction(pauseAction);
     bar->addAction(stopAction);
     bar->addAction(repeatAction);
     bar->addAction(shuffleAction);
 
-    seekSlider = new Phonon::SeekSlider(this);
-    seekSlider->setMediaObject(mediaObject);
-
-/*    volumeSlider = new Phonon::VolumeSlider(this);
-    volumeSlider->setAudioOutput(audioOutput);
-    volumeSlider->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    volumeSlider->setOrientation(Qt::Vertical);*/
-
-    QLabel *volumeLabel = new QLabel;
-    volumeLabel->setPixmap(QPixmap("images/volume.png"));
+/*    QLabel *volumeLabel = new QLabel;
+    volumeLabel->setPixmap(QPixmap("images/volume.png"));*/
 
 /*    QPalette palette;
     palette.setBrush(QPalette::Light, Qt::darkGray);*/
@@ -483,10 +527,14 @@ void MainWindow::setupUi()
         this, SLOT(tableClicked(int,int)));
 
     QHBoxLayout *seekerLayout = new QHBoxLayout;
+    QToolBar* bar2 = new QToolBar;
+    bar2->addAction(volumeAction);
+    seekerLayout->addWidget(bar2);
     seekerLayout->addWidget(seekSlider);
     seekerLayout->addWidget(timeLcd);
 
     QVBoxLayout *playbackLayout = new QVBoxLayout;
+    volumeSlider->hide ();
     playbackLayout->addWidget(bar);
 //    playbackLayout->addStretch();
 //    playbackLayout->addWidget(volumeSlider);
@@ -498,6 +546,7 @@ void MainWindow::setupUi()
     seekAndTableLayout->addLayout(seekerLayout);
 
     QHBoxLayout *mainLayout = new QHBoxLayout;
+    mainLayout->addWidget(volumeSlider);
     mainLayout->addLayout(seekAndTableLayout);
     mainLayout->addLayout(playbackLayout);
 

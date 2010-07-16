@@ -76,6 +76,7 @@ private slots:
     void addUrl ();
     void repeatToggle ();
     void shuffleToggle ();
+    void volumeToggle ();
     void about();
     void stateChanged(Phonon::State newState, Phonon::State oldState);
     void tick(qint64 time);
@@ -84,6 +85,9 @@ private slots:
     void aboutToFinish();
     void finished();
     void tableClicked(int row, int column);
+    void savePlaylist();
+    void loadPlaylist();
+    void clearPlaylist();
 
 private:
     void setupActions();
@@ -104,14 +108,20 @@ private:
     QAction *stopAction;
     QAction *repeatAction;
     QAction *shuffleAction;
+    QAction *volumeAction;
+    QAction *volumeAddedAction;
     QAction *nextAction;
     QAction *previousAction;
     QAction *addFilesAction;
     QAction *addFoldersAction;
     QAction *addUrlAction;
+    QAction *savePlaylistAction;
+    QAction *loadPlaylistAction;
+    QAction *clearPlaylistAction;
     QAction *exitAction;
     QAction *aboutAction;
     QAction *aboutQtAction;
+    QToolBar *bar;
     QLCDNumber *timeLcd;
     QTableWidget *musicTable;
     Ui::MainWindow ui;
