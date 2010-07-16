@@ -445,6 +445,7 @@ void MainWindow::clearPlaylist()
     sources.clear();
     while (musicTable->rowCount())
         musicTable->removeRow(0);
+    mediaObject->clear();
 }
 
 void MainWindow::repeatToggle ()
