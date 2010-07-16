@@ -11,11 +11,9 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp \
-    playlist.cpp
+        mainwindow.cpp
 
-HEADERS  += mainwindow.h \
-    playlist.h
+HEADERS  += mainwindow.h
 
 FORMS    +=
 

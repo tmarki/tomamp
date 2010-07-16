@@ -2,5 +2,11 @@
     <qresource prefix="/images">
         <file alias="volume">images/audio-volume-high.png</file>
         <file alias="shuffle">images/shuffle.png</file>
+        <file alias="next">images/Button Next.png</file>
+        <file alias="pause">images/Button Pause.png</file>
+        <file alias="play">images/Button Play.png</file>
+        <file alias="repeat">images/Button Reload.png</file>
+        <file alias="stop">images/Button Stop.png</file>
+        <file alias="previous">images/Button Previous.png</file>
     </qresource>
 </RCC>

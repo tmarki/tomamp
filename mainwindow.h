@@ -50,7 +50,6 @@
 #include <phonon/volumeslider.h>
 #include <phonon/backendcapabilities.h>
 #include <QList>
-#include "ui_mainwindow.h"
 
 class QAction;
 class QTableWidget;
@@ -88,6 +87,8 @@ private slots:
     void savePlaylist();
     void loadPlaylist();
     void clearPlaylist();
+    void next();
+    void previous();
 
 private:
     void setupActions();
@@ -124,7 +125,6 @@ private:
     QToolBar *bar;
     QLCDNumber *timeLcd;
     QTableWidget *musicTable;
-    Ui::MainWindow ui;
     bool    repeat;
     bool    shuffle;
     QSettings settings;

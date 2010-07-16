@@ -3,6 +3,7 @@
 #include <QInputDialog>
 
 #include "mainwindow.h"
+#include "time.h"
 
 #define AVOID_INPUT_DIALOG 1
 
@@ -50,6 +51,7 @@ MainWindow::~MainWindow()
     }
     settings.setValue("lastPlaylist", curList);
     settings.setValue("volume", audioOutput->volume());
+    qDebug () << "cucc: " << musicTable->columnWidth(1);
 }
 
 void MainWindow::addFiles()
@@ -142,9 +144,11 @@ void MainWindow::addStringList(const QStringList& list)
 
 void MainWindow::about()
 {
-    QMessageBox::information(this, tr("About Music Player"),
-        tr("The Music Player example shows how to use Phonon - the multimedia"
-        " framework that comes with Qt - to create a simple music player."));
+    QMessageBox::information(this, tr("About TomAmp v0.1"),
+        tr("TomAmp is a simple playlist-based music player.\n\n"
+        "(c) 2010 Tamas Marki <tmarki@gmail.com>\n\n"
+        "Please send comments and bug reports to the above e-mail address.\n\n"
+        "Icons by deleket (http://www.deleket.com)"));
 }
 
 void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState */)
@@ -166,6 +170,8 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
             break;
         case Phonon::PlayingState:
             setWindowTitle(mediaObject->metaData().value("TITLE") + " - TomAmp");
+            pauseAction->setVisible(true);
+            playAction->setVisible (false);
             playAction->setEnabled(false);
             pauseAction->setEnabled(true);
             stopAction->setEnabled(true);
@@ -173,12 +179,16 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
         case Phonon::StoppedState:
             stopAction->setEnabled(false);
             playAction->setEnabled(true);
+            pauseAction->setVisible(false);
+            playAction->setVisible(true);
             pauseAction->setEnabled(false);
             timeLcd->display("00:00");
             break;
         case Phonon::PausedState:
             pauseAction->setEnabled(false);
             stopAction->setEnabled(true);
+            pauseAction->setVisible(false);
+            playAction->setVisible(true);
             playAction->setEnabled(true);
             qDebug () << "Queue size: " << mediaObject->queue().size ();
             if (mediaObject->queue().size ())
@@ -195,6 +205,16 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
         default:
         ;
     }
+}
+
+void MainWindow::next()
+{
+
+}
+
+void MainWindow::previous()
+{
+
 }
 
 void MainWindow::tick(qint64 time)
@@ -263,15 +283,12 @@ void MainWindow::metaStateChanged(Phonon::State newState, Phonon::State /* oldSt
     artistItem->setFlags(artistItem->flags() ^ Qt::ItemIsEditable);
     QTableWidgetItem *albumItem = new QTableWidgetItem(metaData.value("ALBUM"));
     albumItem->setFlags(albumItem->flags() ^ Qt::ItemIsEditable);
-    QTableWidgetItem *yearItem = new QTableWidgetItem(metaData.value("DATE"));
-    yearItem->setFlags(yearItem->flags() ^ Qt::ItemIsEditable);
 
     int currentRow = musicTable->rowCount();
     musicTable->insertRow(currentRow);
     musicTable->setItem(currentRow, 0, artistItem);
     musicTable->setItem(currentRow, 1, titleItem);
     musicTable->setItem(currentRow, 2, albumItem);
-    musicTable->setItem(currentRow, 3, yearItem);
 
 
     if (musicTable->selectedItems().isEmpty())
@@ -289,8 +306,8 @@ void MainWindow::metaStateChanged(Phonon::State newState, Phonon::State /* oldSt
     else
     {
         musicTable->resizeColumnsToContents();
-        if (musicTable->columnWidth(0) > 300)
-            musicTable->setColumnWidth(0, 300);
+/*        if (musicTable->columnWidth(0) > 300)
+            musicTable->setColumnWidth(0, 300);*/
     }
 }
 
@@ -333,20 +350,21 @@ void MainWindow::finished()
 
 void MainWindow::setupActions()
 {
-    playAction = new QAction(style()->standardIcon(QStyle::SP_MediaPlay), tr("Play"), this);
+    playAction = new QAction(QIcon (QPixmap (":images/play")), tr("Play"), this);
     playAction->setShortcut(tr("Crl+P"));
     playAction->setDisabled(true);
-    pauseAction = new QAction(style()->standardIcon(QStyle::SP_MediaPause), tr("Pause"), this);
+    pauseAction = new QAction(QIcon (QPixmap (":images/pause")), tr("Pause"), this);
     pauseAction->setShortcut(tr("Ctrl+A"));
     pauseAction->setDisabled(true);
-    stopAction = new QAction(style()->standardIcon(QStyle::SP_MediaStop), tr("Stop"), this);
+    pauseAction->setVisible(false);
+    stopAction = new QAction(QIcon (QPixmap (":images/stop")), tr("Stop"), this);
     stopAction->setShortcut(tr("Ctrl+S"));
     stopAction->setDisabled(true);
-    nextAction = new QAction(style()->standardIcon(QStyle::SP_MediaSkipForward), tr("Next"), this);
+    nextAction = new QAction(QIcon (QPixmap (":images/next")), tr("Next"), this);
     nextAction->setShortcut(tr("Ctrl+N"));
-    previousAction = new QAction(style()->standardIcon(QStyle::SP_MediaSkipBackward), tr("Previous"), this);
+    previousAction = new QAction(QIcon (QPixmap (":images/previous")), tr("Previous"), this);
     previousAction->setShortcut(tr("Ctrl+R"));
-    repeatAction = new QAction(style()->standardIcon(QStyle::SP_BrowserReload), tr("Repeat"), this);
+    repeatAction = new QAction(QIcon (QPixmap (":images/repeat")), tr("Repeat"), this);
     repeatAction->setCheckable(true);
     repeatAction->setChecked(repeat);
     repeatAction->setShortcut(tr("Ctrl+I"));
@@ -388,6 +406,8 @@ void MainWindow::setupActions()
     connect (savePlaylistAction, SIGNAL (triggered()), this, SLOT (savePlaylist()));
     connect (loadPlaylistAction, SIGNAL (triggered()), this, SLOT (loadPlaylist()));
     connect (clearPlaylistAction, SIGNAL (triggered()), this, SLOT (clearPlaylist()));
+    connect (nextAction, SIGNAL(triggered()), this, SLOT(next()));
+    connect (previousAction, SIGNAL(triggered()), this, SLOT(previous()));
     connect(exitAction, SIGNAL(triggered()), this, SLOT(close()));
     connect(aboutAction, SIGNAL(triggered()), this, SLOT(about()));
     connect(aboutQtAction, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
@@ -395,7 +415,7 @@ void MainWindow::setupActions()
 
 void MainWindow::savePlaylist()
 {
-    QString filename = QFileDialog::getSaveFileName(this, tr("Please select file name"), "", "*.m3u");
+    QString filename = QFileDialog::getSaveFileName(this, tr("Please select file name"), "", "Playlist Files (*.m3u)");
     if (filename.isEmpty())
         return;
     if (filename.length() < 4 || filename.right(4).toLower() != ".m3u")
@@ -406,10 +426,10 @@ void MainWindow::savePlaylist()
         f.open(QFile::WriteOnly);
         for (int i = 0; i < sources.size(); ++i)
         {
-            if (sources[i].type() == Phonon::MediaSource::Stream)
-                f.write(sources[i].url().toString().toAscii());
-            else
+            if (sources[i].type() == Phonon::MediaSource::LocalFile)
                 f.write (sources[i].fileName().toAscii());
+            else
+                f.write(sources[i].url().toString().toAscii());
             f.write ("\n");
         }
         f.close ();
@@ -431,6 +451,11 @@ void MainWindow::loadPlaylist()
     clearPlaylist();
     foreach (QString l, lines)
     {
+        if (l.isEmpty() || (!QFileInfo (l).exists() && (l.indexOf("http") != 0)))
+        {
+            qDebug () << "not loadable: " << l;\
+            continue;
+        }
         qDebug () << "Load " << l;
         Phonon::MediaSource source(l);
         sources.append(source);
@@ -474,11 +499,11 @@ void MainWindow::setupMenus()
     fileMenu->addAction(addFilesAction);
     fileMenu->addAction(addFoldersAction);
     fileMenu->addAction(addUrlAction);
+    fileMenu->addSeparator();
     fileMenu->addAction(savePlaylistAction);
     fileMenu->addAction(loadPlaylistAction);
     fileMenu->addAction(clearPlaylistAction);
-    fileMenu->addSeparator();
-    fileMenu->addAction(exitAction);
+//    fileMenu->addAction(exitAction);
 
     QMenu *aboutMenu = menuBar()->addMenu(tr("&Help"));
     aboutMenu->addAction(aboutAction);
@@ -490,6 +515,7 @@ void MainWindow::setupUi()
     QToolBar *bar = new QToolBar;
 
     bar->setOrientation(Qt::Vertical);
+    bar->setStyleSheet("padding:7px");
     //bar->addAction(volumeAction);
 
     seekSlider = new Phonon::SeekSlider(this);
@@ -498,7 +524,7 @@ void MainWindow::setupUi()
     volumeSlider = new Phonon::VolumeSlider(this);
     volumeSlider->setAudioOutput(audioOutput);
     volumeSlider->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    volumeSlider->setOrientation(Qt::Vertical);
+    volumeSlider->setOrientation(Qt::Horizontal);
     volumeSlider->setMuteVisible(false);
 //    volumeAddedAction = bar->addWidget(volumeSlider);
 //    volumeAddedAction->setVisible(false);
@@ -507,6 +533,8 @@ void MainWindow::setupUi()
     bar->addAction(stopAction);
     bar->addAction(repeatAction);
     bar->addAction(shuffleAction);
+    bar->addAction(nextAction);
+    bar->addAction(previousAction);
 
 /*    QLabel *volumeLabel = new QLabel;
     volumeLabel->setPixmap(QPixmap("images/volume.png"));*/
@@ -518,9 +546,9 @@ void MainWindow::setupUi()
 //    timeLcd->setPalette(palette);
 
     QStringList headers;
-    headers << tr("Artist") << tr("Title") << tr("Album") << tr("Year");
+    headers << tr("Artist") << tr("Title") << tr("Album");
 
-    musicTable = new QTableWidget(0, 4);
+    musicTable = new QTableWidget(0, 3);
     musicTable->setHorizontalHeaderLabels(headers);
     musicTable->setSelectionMode(QAbstractItemView::SingleSelection);
     musicTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -531,6 +559,7 @@ void MainWindow::setupUi()
     QToolBar* bar2 = new QToolBar;
     bar2->addAction(volumeAction);
     seekerLayout->addWidget(bar2);
+    seekerLayout->addWidget(volumeSlider);
     seekerLayout->addWidget(seekSlider);
     seekerLayout->addWidget(timeLcd);
 
@@ -547,7 +576,6 @@ void MainWindow::setupUi()
     seekAndTableLayout->addLayout(seekerLayout);
 
     QHBoxLayout *mainLayout = new QHBoxLayout;
-    mainLayout->addWidget(volumeSlider);
     mainLayout->addLayout(seekAndTableLayout);
     mainLayout->addLayout(playbackLayout);
 
@@ -556,7 +584,7 @@ void MainWindow::setupUi()
 
     setCentralWidget(widget);
     setWindowTitle("TomAmp");
-//    ui.setupUi(this);
+    qDebug () << "cucc: " << musicTable->columnWidth(1);
 }
 
 
