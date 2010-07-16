@@ -41,8 +41,11 @@
 
 #include <QtGui>
 #include <QtDebug>
+#include <QInputDialog>
 
 #include "mainwindow.h"
+
+#define AVOID_INPUT_DIALOG 1
 
 MainWindow::MainWindow()
     : settings (tr ("TomAmp"), "TomAmp")
@@ -51,7 +54,7 @@ MainWindow::MainWindow()
     mediaObject = new Phonon::MediaObject(this);
     metaInformationResolver = new Phonon::MediaObject(this);
 
-    mediaObject->setTickInterval(1000);
+    mediaObject->setTickInterval(500);
     connect(mediaObject, SIGNAL(tick(qint64)), this, SLOT(tick(qint64)));
     connect(mediaObject, SIGNAL(stateChanged(Phonon::State,Phonon::State)),
     this, SLOT(stateChanged(Phonon::State,Phonon::State)));
@@ -63,10 +66,26 @@ MainWindow::MainWindow()
 
     Phonon::createPath(mediaObject, audioOutput);
 
+    repeat = settings.value("repeat", false).toBool();
+    shuffle = settings.value("shuffle", false).toBool();
+    qsrand (time (NULL));
+    setupShuffleList();
     setupActions();
     setupMenus();
     setupUi();
     timeLcd->display("00:00");
+    addStringList(settings.value("lastPlaylist").toStringList());
+}
+
+MainWindow::~MainWindow()
+{
+    settings.setValue("shuffle", shuffle);
+    QStringList curList;
+    foreach (Phonon::MediaSource src, sources)
+    {
+        curList.append(src.fileName());
+    }
+    settings.setValue("lastPlaylist", curList);
 }
 
 void MainWindow::addFiles()
@@ -90,6 +109,7 @@ void MainWindow::addFiles()
     }
     if (!sources.isEmpty())
         metaInformationResolver->setCurrentSource(sources.at(index));
+    setupShuffleList();
 
 }
 
@@ -121,9 +141,40 @@ void MainWindow::addFolders()
     }
     if (!sources.isEmpty())
         metaInformationResolver->setCurrentSource(sources.at(index));
+    setupShuffleList();
 
 }
 
+void MainWindow::addUrl()
+{
+#ifdef AVOID_INPUT_DIALOG
+    QString url = "http://war.str3am.com:7970";
+#else
+    QString url = QInputDialog::getText(this, "Get URL", "Please type in the stream URL");
+#endif
+    int index = sources.size();
+    if (!url.isEmpty())
+    {
+        Phonon::MediaSource source(url);
+        sources.append(source);
+    }
+    if (!sources.isEmpty())
+        metaInformationResolver->setCurrentSource(sources.at(index));
+    setupShuffleList();
+}
+
+void MainWindow::addStringList(const QStringList& list)
+{
+    int index = sources.size();
+    foreach (QString string, list)
+    {
+        Phonon::MediaSource source(string);
+        sources.append(source);
+    }
+    if (!sources.isEmpty())
+        metaInformationResolver->setCurrentSource(sources.at(index));
+    setupShuffleList();
+}
 
 void MainWindow::about()
 {
@@ -168,14 +219,14 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
             qDebug () << "Queue size: " << mediaObject->queue().size ();
             if (mediaObject->queue().size ())
             {
-                int index = sources.indexOf(mediaObject->currentSource());
-                mediaObject->setCurrentSource(
-                    sources.at(index));
-                mediaObject->play ();
-                musicTable->setCurrentCell(index, 0);;
+                mediaObject->setCurrentSource(mediaObject->queue()[0]);
+                musicTable->selectRow(sources.indexOf(mediaObject->currentSource()));
+                mediaObject->play();
             }
+            mediaObject->clearQueue();
             break;
         case Phonon::BufferingState:
+            qDebug () << "Buffering";
             break;
         default:
         ;
@@ -202,6 +253,10 @@ void MainWindow::tableClicked(int row, int /* column */)
     mediaObject->setCurrentSource(sources[row]);
 
     mediaObject->play();
+    int ind = shuffleList.indexOf(row);
+    shuffleList.removeAt(ind);
+    shuffleList.insert(0, row);
+    qDebug () << "Modified shuffle list: " << shuffleList;
 }
 
 void MainWindow::sourceChanged(const Phonon::MediaSource &source)
@@ -234,6 +289,9 @@ void MainWindow::metaStateChanged(Phonon::State newState, Phonon::State /* oldSt
     QString title = metaData.value("TITLE");
     if (title == "")
         title = metaInformationResolver->currentSource().fileName();
+
+    if (title == "")
+        title = metaInformationResolver->currentSource().url().toString();
 
     QTableWidgetItem *titleItem = new QTableWidgetItem(title);
     titleItem->setFlags(titleItem->flags() ^ Qt::ItemIsEditable);
@@ -274,12 +332,39 @@ void MainWindow::metaStateChanged(Phonon::State newState, Phonon::State /* oldSt
 
 void MainWindow::aboutToFinish()
 {
+    qDebug () << "Abouttotfinish";
     int index = sources.indexOf(mediaObject->currentSource()) + 1;
-    if (sources.size() > index)
+    if (shuffle)
     {
-        mediaObject->enqueue(sources.at(index));
-        qDebug () << "Enqueue " << index;
+        index = shuffleList.indexOf(sources.indexOf(mediaObject->currentSource())) + 1;
+        if (index < shuffleList.size ())
+        {
+            mediaObject->enqueue(sources.at (shuffleList[index]));
+        }
+        else if (repeat)
+        {
+            mediaObject->enqueue(sources.at (shuffleList[0]));
+        }
+
     }
+    else
+    {
+        if (sources.size() > index)
+        {
+            mediaObject->enqueue(sources.at(index));
+            qDebug () << "Enqueue " << index << " pfm " << mediaObject->prefinishMark();
+        }
+        else if (repeat)
+        {
+            mediaObject->enqueue(sources.at(0));
+            qDebug () << "Enqueue " << 0 << " pfm " << mediaObject->prefinishMark();
+        }
+    }
+}
+
+void MainWindow::finished()
+{
+    qDebug () << "Finished";
 }
 
 void MainWindow::setupActions()
@@ -297,10 +382,20 @@ void MainWindow::setupActions()
     nextAction->setShortcut(tr("Ctrl+N"));
     previousAction = new QAction(style()->standardIcon(QStyle::SP_MediaSkipBackward), tr("Previous"), this);
     previousAction->setShortcut(tr("Ctrl+R"));
+    repeatAction = new QAction(style()->standardIcon(QStyle::SP_BrowserReload), tr("Repeat"), this);
+    repeatAction->setCheckable(true);
+    repeatAction->setChecked(repeat);
+    repeatAction->setShortcut(tr("Ctrl+I"));
+    shuffleAction = new QAction(style()->standardIcon(QStyle::SP_TrashIcon), tr("S&huffle"), this);
+    shuffleAction->setCheckable(true);
+    shuffleAction->setChecked(shuffle);
+    shuffleAction->setShortcut(tr("Ctrl+H"));
     addFilesAction = new QAction(tr("Add &File"), this);
     addFilesAction->setShortcut(tr("Ctrl+F"));
     addFoldersAction = new QAction(tr("Add F&older"), this);
     addFoldersAction->setShortcut(tr("Ctrl+O"));
+    addUrlAction = new QAction(tr("Add &Url"), this);
+    addUrlAction->setShortcut(tr("Ctrl+U"));
     exitAction = new QAction(tr("E&xit"), this);
     exitAction->setShortcuts(QKeySequence::Quit);
     aboutAction = new QAction(tr("A&bout"), this);
@@ -311,18 +406,36 @@ void MainWindow::setupActions()
     connect(playAction, SIGNAL(triggered()), mediaObject, SLOT(play()));
     connect(pauseAction, SIGNAL(triggered()), mediaObject, SLOT(pause()) );
     connect(stopAction, SIGNAL(triggered()), mediaObject, SLOT(stop()));
+    connect(repeatAction, SIGNAL(triggered()), this, SLOT(repeatToggle()));
+    connect(shuffleAction, SIGNAL(triggered()), this, SLOT(shuffleToggle()));
     connect(addFilesAction, SIGNAL(triggered()), this, SLOT(addFiles()));
     connect(addFoldersAction, SIGNAL(triggered()), this, SLOT(addFolders()));
+    connect(addUrlAction, SIGNAL(triggered()), this, SLOT(addUrl()));
     connect(exitAction, SIGNAL(triggered()), this, SLOT(close()));
     connect(aboutAction, SIGNAL(triggered()), this, SLOT(about()));
     connect(aboutQtAction, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
 }
+
+void MainWindow::repeatToggle ()
+{
+    repeat = !repeat;
+    qDebug() << "Repeat toggled to " << repeat;
+    settings.setValue("repeat", QVariant (repeat));
+}
+
+void MainWindow::shuffleToggle ()
+{
+    shuffle = !shuffle;
+    settings.setValue("shuffle", QVariant (shuffle));
+}
+
 
 void MainWindow::setupMenus()
 {
     QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
     fileMenu->addAction(addFilesAction);
     fileMenu->addAction(addFoldersAction);
+    fileMenu->addAction(addUrlAction);
     fileMenu->addSeparator();
     fileMenu->addAction(exitAction);
 
@@ -339,14 +452,16 @@ void MainWindow::setupUi()
     bar->addAction(playAction);
     bar->addAction(pauseAction);
     bar->addAction(stopAction);
+    bar->addAction(repeatAction);
+    bar->addAction(shuffleAction);
 
     seekSlider = new Phonon::SeekSlider(this);
     seekSlider->setMediaObject(mediaObject);
 
-    volumeSlider = new Phonon::VolumeSlider(this);
+/*    volumeSlider = new Phonon::VolumeSlider(this);
     volumeSlider->setAudioOutput(audioOutput);
     volumeSlider->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    volumeSlider->setOrientation(Qt::Vertical);
+    volumeSlider->setOrientation(Qt::Vertical);*/
 
     QLabel *volumeLabel = new QLabel;
     volumeLabel->setPixmap(QPixmap("images/volume.png"));
@@ -373,9 +488,9 @@ void MainWindow::setupUi()
 
     QVBoxLayout *playbackLayout = new QVBoxLayout;
     playbackLayout->addWidget(bar);
-    playbackLayout->addStretch();
-    playbackLayout->addWidget(volumeSlider);
-    playbackLayout->addWidget(volumeLabel);
+//    playbackLayout->addStretch();
+//    playbackLayout->addWidget(volumeSlider);
+//    playbackLayout->addWidget(volumeLabel);
 
     QVBoxLayout *seekAndTableLayout = new QVBoxLayout;
 
@@ -394,3 +509,18 @@ void MainWindow::setupUi()
 //    ui.setupUi(this);
 }
 
+
+void MainWindow::setupShuffleList()
+{
+    QList<int> tmp;
+    for (int i = 0; i < sources.size(); ++i)
+        tmp.append(i);
+    shuffleList.clear();
+    while (tmp.size ())
+    {
+        int ind = qrand () % tmp.size();
+        shuffleList.append(tmp[ind]);
+        tmp.removeAt(ind);
+    }
+    qDebug () << shuffleList;
+}

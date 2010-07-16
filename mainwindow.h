@@ -63,6 +63,7 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow();
+    ~MainWindow ();
 
     QSize sizeHint() const
     {
@@ -72,19 +73,24 @@ public:
 private slots:
     void addFiles();
     void addFolders();
+    void addUrl ();
+    void repeatToggle ();
+    void shuffleToggle ();
     void about();
     void stateChanged(Phonon::State newState, Phonon::State oldState);
     void tick(qint64 time);
     void sourceChanged(const Phonon::MediaSource &source);
     void metaStateChanged(Phonon::State newState, Phonon::State oldState);
     void aboutToFinish();
-//    void finished();
+    void finished();
     void tableClicked(int row, int column);
 
 private:
     void setupActions();
     void setupMenus();
     void setupUi();
+    void setupShuffleList();
+    void addStringList (const QStringList&);
 
     Phonon::SeekSlider *seekSlider;
     Phonon::MediaObject *mediaObject;
@@ -96,17 +102,23 @@ private:
     QAction *playAction;
     QAction *pauseAction;
     QAction *stopAction;
+    QAction *repeatAction;
+    QAction *shuffleAction;
     QAction *nextAction;
     QAction *previousAction;
     QAction *addFilesAction;
     QAction *addFoldersAction;
+    QAction *addUrlAction;
     QAction *exitAction;
     QAction *aboutAction;
     QAction *aboutQtAction;
     QLCDNumber *timeLcd;
     QTableWidget *musicTable;
     Ui::MainWindow ui;
+    bool    repeat;
+    bool    shuffle;
     QSettings settings;
+    QList<int> shuffleList;
 };
 
 #endif
