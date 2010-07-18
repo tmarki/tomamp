@@ -14,7 +14,7 @@ MainWindow::MainWindow()
     mediaObject = new Phonon::MediaObject(this);
     metaInformationResolver = new Phonon::MediaObject(this);
 
-    mediaObject->setTickInterval(500);
+    mediaObject->setTickInterval(1000);
     connect(mediaObject, SIGNAL(tick(qint64)), this, SLOT(tick(qint64)));
     connect(mediaObject, SIGNAL(stateChanged(Phonon::State,Phonon::State)),
         this, SLOT(stateChanged(Phonon::State,Phonon::State)));
@@ -79,7 +79,7 @@ void MainWindow::addFiles()
 
 }
 
-void MainWindow::addFolders()
+void MainWindow::addFolder()
 {
     QString folder = settings.value("LastFolder").toString();
     if (folder.isEmpty())
@@ -88,16 +88,33 @@ void MainWindow::addFolders()
             tr("Select Directory To Add"),
             folder);
 
+    int index = sources.size();
     QStringList filters;
-    filters << "*.mp3";
+    QStringList files = QDir (dir).entryList(filters, QDir::AllDirs);
+    qDebug () << files;
+    bool recursive = false;
+    if (files.size())
+        recursive = QMessageBox::question(this, "Add all folders", "Subfolders have been detected, add everything?", QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes;
+    parseAndAddFolder(dir, recursive);
+    if (!sources.isEmpty() && index < sources.size())
+        metaInformationResolver->setCurrentSource(sources.at(index));
+    setupShuffleList();
+
+}
+
+void MainWindow::parseAndAddFolder(const QString &dir, bool recursive)
+{
+    QStringList filters;
+//    filters << "*.mp3";
 
     QStringList files = QDir (dir).entryList(filters);
 
     if (files.isEmpty())
         return;
 
+    qDebug () << files;
+
     settings.setValue("LastFolder", dir);
-    int index = sources.size();
     foreach (QString string, files)
     {
         QString fname = dir + "/" + string;
@@ -105,9 +122,6 @@ void MainWindow::addFolders()
         Phonon::MediaSource source(fname);
         sources.append(source);
     }
-    if (!sources.isEmpty())
-        metaInformationResolver->setCurrentSource(sources.at(index));
-    setupShuffleList();
 
 }
 
@@ -209,11 +223,66 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
 
 void MainWindow::next()
 {
+    bool wasPlaying = (mediaObject->state () == Phonon::PlayingState);
+    int index = sources.indexOf(mediaObject->currentSource()) + 1;
+    if (shuffle)
+    {
+        index = shuffleList.indexOf(sources.indexOf(mediaObject->currentSource())) + 1;
+        if (index < shuffleList.size ())
+        {
+            mediaObject->setCurrentSource(sources.at (shuffleList[index]));
+        }
+        else if (repeat)
+        {
+            mediaObject->setCurrentSource(sources.at (shuffleList[0]));
+        }
 
+    }
+    else
+    {
+        if (sources.size() > index)
+        {
+            mediaObject->setCurrentSource(sources.at(index));
+        }
+        else if (repeat)
+        {
+            mediaObject->setCurrentSource(sources.at(0));
+        }
+    }
+    if (wasPlaying)
+        mediaObject->play();
 }
 
 void MainWindow::previous()
 {
+    bool wasPlaying = (mediaObject->state () == Phonon::PlayingState);
+    int index = sources.indexOf(mediaObject->currentSource()) - 1;
+    if (shuffle)
+    {
+        index = shuffleList.indexOf(sources.indexOf(mediaObject->currentSource())) - 1;
+        if (index >= 0)
+        {
+            mediaObject->setCurrentSource(sources.at (shuffleList[index]));
+        }
+        else if (repeat)
+        {
+            mediaObject->setCurrentSource(sources.at (shuffleList[shuffleList.size() - 1]));
+        }
+
+    }
+    else
+    {
+        if (index >= 0)
+        {
+            mediaObject->setCurrentSource(sources.at(index));
+        }
+        else if (repeat)
+        {
+            mediaObject->setCurrentSource(sources.at(sources.size() - 1));
+        }
+    }
+    if (wasPlaying)
+        mediaObject->play();
 
 }
 
@@ -401,7 +470,7 @@ void MainWindow::setupActions()
     connect(shuffleAction, SIGNAL(triggered()), this, SLOT(shuffleToggle()));
     connect(volumeAction, SIGNAL(triggered()), this, SLOT(volumeToggle()));
     connect(addFilesAction, SIGNAL(triggered()), this, SLOT(addFiles()));
-    connect(addFoldersAction, SIGNAL(triggered()), this, SLOT(addFolders()));
+    connect(addFoldersAction, SIGNAL(triggered()), this, SLOT(addFolder()));
     connect(addUrlAction, SIGNAL(triggered()), this, SLOT(addUrl()));
     connect (savePlaylistAction, SIGNAL (triggered()), this, SLOT (savePlaylist()));
     connect (loadPlaylistAction, SIGNAL (triggered()), this, SLOT (loadPlaylist()));
@@ -554,6 +623,9 @@ void MainWindow::setupUi()
     musicTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     connect(musicTable, SIGNAL(cellDoubleClicked(int,int)),
         this, SLOT(tableClicked(int,int)));
+    connect(musicTable, SIGNAL(cellClicked(int,int)),
+        this, SLOT(cellClicked(int,int)));
+    musicTable->setSelectionBehavior(QAbstractItemView::SelectRows);
 
     QHBoxLayout *seekerLayout = new QHBoxLayout;
     QToolBar* bar2 = new QToolBar;
@@ -587,18 +659,44 @@ void MainWindow::setupUi()
     qDebug () << "cucc: " << musicTable->columnWidth(1);
 }
 
+void MainWindow::cellClicked(int row, int)
+{
+    if (mediaObject->state() == Phonon::PlayingState)
+    {
+        int index = sources.indexOf(mediaObject->currentSource());
+        if (index >= 0)
+        {
+            musicTable->selectRow(index);
+        }
+    }
+    else if (row < sources.size())
+    {
+        mediaObject->setCurrentSource(sources[row]);
+        shuffleList.removeAll(row);
+        shuffleList.insert(0, row);
+        qDebug () << shuffleList;
+    }
+}
 
 void MainWindow::setupShuffleList()
 {
     QList<int> tmp;
+    int index = sources.indexOf(mediaObject->currentSource());
+    if (index < 0)
+        index = 0;
     for (int i = 0; i < sources.size(); ++i)
-        tmp.append(i);
+    {
+        if (i != index)
+            tmp.append(i);
+    }
     shuffleList.clear();
+    shuffleList.append (index);
     while (tmp.size ())
     {
         int ind = qrand () % tmp.size();
         shuffleList.append(tmp[ind]);
         tmp.removeAt(ind);
     }
+    qDebug () << shuffleList;
     qDebug () << shuffleList;
 }

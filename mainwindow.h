@@ -71,7 +71,7 @@ public:
 
 private slots:
     void addFiles();
-    void addFolders();
+    void addFolder();
     void addUrl ();
     void repeatToggle ();
     void shuffleToggle ();
@@ -89,6 +89,7 @@ private slots:
     void clearPlaylist();
     void next();
     void previous();
+    void cellClicked(int row, int column);
 
 private:
     void setupActions();
@@ -96,6 +97,7 @@ private:
     void setupUi();
     void setupShuffleList();
     void addStringList (const QStringList&);
+    void parseAndAddFolder (const QString& dir, bool recursive);
 
     Phonon::SeekSlider *seekSlider;
     Phonon::MediaObject *mediaObject;
