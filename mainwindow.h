@@ -50,6 +50,7 @@
 #include <phonon/volumeslider.h>
 #include <phonon/backendcapabilities.h>
 #include <QList>
+#include "playlistmanager.h"
 
 class QAction;
 class QTableWidget;
@@ -66,7 +67,7 @@ public:
 
     QSize sizeHint() const
     {
-        return QSize(500, 300);
+        return QSize(800, 480);
     }
 
 private slots:
@@ -80,13 +81,10 @@ private slots:
     void stateChanged(Phonon::State newState, Phonon::State oldState);
     void tick(qint64 time);
     void sourceChanged(const Phonon::MediaSource &source);
-    void metaStateChanged(Phonon::State newState, Phonon::State oldState);
     void aboutToFinish();
     void finished();
     void tableClicked(int row, int column);
-    void savePlaylist();
-    void loadPlaylist();
-    void clearPlaylist();
+    void play();
     void next();
     void previous();
     void cellClicked(int row, int column);
@@ -96,15 +94,13 @@ private:
     void setupMenus();
     void setupUi();
     void setupShuffleList();
-    void addStringList (const QStringList&);
-    void parseAndAddFolder (const QString& dir, bool recursive);
 
     Phonon::SeekSlider *seekSlider;
     Phonon::MediaObject *mediaObject;
-    Phonon::MediaObject *metaInformationResolver;
     Phonon::AudioOutput *audioOutput;
     Phonon::VolumeSlider *volumeSlider;
-    QList<Phonon::MediaSource> sources;
+
+    PlaylistManager plman;
 
     QAction *playAction;
     QAction *pauseAction;
@@ -127,10 +123,10 @@ private:
     QToolBar *bar;
     QLCDNumber *timeLcd;
     QTableWidget *musicTable;
-    bool    repeat;
-    bool    shuffle;
+    bool        repeat;
+    bool        shuffle;
     QSettings settings;
-    QList<int> shuffleList;
+    QList<int>  shuffleList;
 };
 
 #endif

@@ -5,53 +5,43 @@
 #include "mainwindow.h"
 #include "time.h"
 
-#define AVOID_INPUT_DIALOG 1
+#define AVOID_INPUT_DIALOG 0
 
 MainWindow::MainWindow()
-    : settings (tr ("TomAmp"), "TomAmp")
+    : plman (this), settings (tr ("TomAmp"), "TomAmp")
 {
     audioOutput = new Phonon::AudioOutput(Phonon::MusicCategory, this);
     mediaObject = new Phonon::MediaObject(this);
-    metaInformationResolver = new Phonon::MediaObject(this);
 
     mediaObject->setTickInterval(1000);
     connect(mediaObject, SIGNAL(tick(qint64)), this, SLOT(tick(qint64)));
     connect(mediaObject, SIGNAL(stateChanged(Phonon::State,Phonon::State)),
         this, SLOT(stateChanged(Phonon::State,Phonon::State)));
-    connect(metaInformationResolver, SIGNAL(stateChanged(Phonon::State,Phonon::State)),
-        this, SLOT(metaStateChanged(Phonon::State,Phonon::State)));
     connect(mediaObject, SIGNAL(currentSourceChanged(Phonon::MediaSource)),
         this, SLOT(sourceChanged(Phonon::MediaSource)));
     connect(mediaObject, SIGNAL(aboutToFinish()), this, SLOT(aboutToFinish()));
 
     Phonon::createPath(mediaObject, audioOutput);
 
+    qsrand (time (NULL));
     repeat = settings.value("repeat", false).toBool();
     shuffle = settings.value("shuffle", false).toBool();
-    qsrand (time (NULL));
     setupShuffleList();
     setupActions();
     setupMenus();
     setupUi();
     timeLcd->display("00:00");
-    addStringList(settings.value("lastPlaylist").toStringList());
+    plman.addStringList(settings.value("lastPlaylist").toStringList());
+    setupShuffleList();
     audioOutput->setVolume(settings.value("volume", .5).toReal());
 }
 
 MainWindow::~MainWindow()
 {
     settings.setValue("shuffle", shuffle);
-    QStringList curList;
-    foreach (Phonon::MediaSource src, sources)
-    {
-        if (src.type () == Phonon::MediaSource::LocalFile)
-            curList.append(src.fileName());
-        else
-            curList.append(src.url().toString());
-    }
-    settings.setValue("lastPlaylist", curList);
+    settings.setValue("repeat", repeat);
+    settings.setValue("lastPlaylist", plman.playlist());
     settings.setValue("volume", audioOutput->volume());
-    qDebug () << "cucc: " << musicTable->columnWidth(1);
 }
 
 void MainWindow::addFiles()
@@ -67,16 +57,13 @@ void MainWindow::addFiles()
 
     QString dir = QFileInfo (files[0]).absoluteDir().absolutePath();
     settings.setValue("LastFolder", dir);
-    int index = sources.size();
+    QStringList toadd;
     foreach (QString string, files)
     {
-        Phonon::MediaSource source (string);
-        sources.append(source);
+        toadd.append (string);
     }
-    if (!sources.isEmpty())
-        metaInformationResolver->setCurrentSource(sources.at(index));
+    plman.addStringList(toadd);
     setupShuffleList();
-
 }
 
 void MainWindow::addFolder()
@@ -88,42 +75,18 @@ void MainWindow::addFolder()
             tr("Select Directory To Add"),
             folder);
 
-    int index = sources.size();
     QStringList filters;
     QStringList files = QDir (dir).entryList(filters, QDir::AllDirs);
+    files.removeAll(".");
+    files.removeAll("..");
     qDebug () << files;
     bool recursive = false;
     if (files.size())
         recursive = QMessageBox::question(this, "Add all folders", "Subfolders have been detected, add everything?", QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes;
-    parseAndAddFolder(dir, recursive);
-    if (!sources.isEmpty() && index < sources.size())
-        metaInformationResolver->setCurrentSource(sources.at(index));
+    plman.parseAndAddFolder(dir, recursive);
     setupShuffleList();
-
 }
 
-void MainWindow::parseAndAddFolder(const QString &dir, bool recursive)
-{
-    QStringList filters;
-//    filters << "*.mp3";
-
-    QStringList files = QDir (dir).entryList(filters);
-
-    if (files.isEmpty())
-        return;
-
-    qDebug () << files;
-
-    settings.setValue("LastFolder", dir);
-    foreach (QString string, files)
-    {
-        QString fname = dir + "/" + string;
-        qDebug () << fname;
-        Phonon::MediaSource source(fname);
-        sources.append(source);
-    }
-
-}
 
 void MainWindow::addUrl()
 {
@@ -132,29 +95,12 @@ void MainWindow::addUrl()
 #else
     QString url = QInputDialog::getText(this, "Get URL", "Please type in the stream URL");
 #endif
-    int index = sources.size();
-    if (!url.isEmpty())
-    {
-        Phonon::MediaSource source(url);
-        sources.append(source);
-    }
-    if (!sources.isEmpty())
-        metaInformationResolver->setCurrentSource(sources.at(index));
+    QStringList toadd;
+    toadd << url;
+    plman.addStringList(toadd);
     setupShuffleList();
 }
 
-void MainWindow::addStringList(const QStringList& list)
-{
-    int index = sources.size();
-    foreach (QString string, list)
-    {
-        Phonon::MediaSource source(string);
-        sources.append(source);
-    }
-    if (!sources.isEmpty())
-        metaInformationResolver->setCurrentSource(sources.at(index));
-    setupShuffleList();
-}
 
 void MainWindow::about()
 {
@@ -173,14 +119,15 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
         case Phonon::ErrorState:
             if (mediaObject->errorType() == Phonon::FatalError)
             {
-                QMessageBox::warning(this, tr("Fatal Error"),
-                mediaObject->errorString());
+//                QMessageBox::warning(this, tr("Fatal Error"),
+//                mediaObject->errorString() + mediaObject->currentSource().fileName() + ", " + mediaObject->currentSource().url().toString());
             }
             else
             {
-                QMessageBox::warning(this, tr("Error"),
-                mediaObject->errorString());
+//                QMessageBox::warning(this, tr("Error"),
+//                mediaObject->errorString());
             }
+            next ();
             break;
         case Phonon::PlayingState:
             setWindowTitle(mediaObject->metaData().value("TITLE") + " - TomAmp");
@@ -208,7 +155,7 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
             if (mediaObject->queue().size ())
             {
                 mediaObject->setCurrentSource(mediaObject->queue()[0]);
-                musicTable->selectRow(sources.indexOf(mediaObject->currentSource()));
+                musicTable->selectRow(plman.indexOf(mediaObject->currentSource()));
                 mediaObject->play();
             }
             mediaObject->clearQueue();
@@ -224,29 +171,29 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
 void MainWindow::next()
 {
     bool wasPlaying = (mediaObject->state () == Phonon::PlayingState);
-    int index = sources.indexOf(mediaObject->currentSource()) + 1;
+    int index = plman.indexOf(mediaObject->currentSource()) + 1;
     if (shuffle)
     {
-        index = shuffleList.indexOf(sources.indexOf(mediaObject->currentSource())) + 1;
+        index = shuffleList.indexOf(plman.indexOf(mediaObject->currentSource())) + 1;
         if (index < shuffleList.size ())
         {
-            mediaObject->setCurrentSource(sources.at (shuffleList[index]));
+            mediaObject->setCurrentSource(plman.at (shuffleList[index]));
         }
         else if (repeat)
         {
-            mediaObject->setCurrentSource(sources.at (shuffleList[0]));
+            mediaObject->setCurrentSource(plman.at (shuffleList[0]));
         }
 
     }
     else
     {
-        if (sources.size() > index)
+        if (plman.size() > index)
         {
-            mediaObject->setCurrentSource(sources.at(index));
+            mediaObject->setCurrentSource(plman.at(index));
         }
         else if (repeat)
         {
-            mediaObject->setCurrentSource(sources.at(0));
+            mediaObject->setCurrentSource(plman.at(0));
         }
     }
     if (wasPlaying)
@@ -256,17 +203,17 @@ void MainWindow::next()
 void MainWindow::previous()
 {
     bool wasPlaying = (mediaObject->state () == Phonon::PlayingState);
-    int index = sources.indexOf(mediaObject->currentSource()) - 1;
+    int index = plman.indexOf(mediaObject->currentSource()) - 1;
     if (shuffle)
     {
-        index = shuffleList.indexOf(sources.indexOf(mediaObject->currentSource())) - 1;
+        index = shuffleList.indexOf(plman.indexOf(mediaObject->currentSource())) - 1;
         if (index >= 0)
         {
-            mediaObject->setCurrentSource(sources.at (shuffleList[index]));
+            mediaObject->setCurrentSource(plman.at (shuffleList[index]));
         }
         else if (repeat)
         {
-            mediaObject->setCurrentSource(sources.at (shuffleList[shuffleList.size() - 1]));
+            mediaObject->setCurrentSource(plman.at (shuffleList[shuffleList.size() - 1]));
         }
 
     }
@@ -274,11 +221,11 @@ void MainWindow::previous()
     {
         if (index >= 0)
         {
-            mediaObject->setCurrentSource(sources.at(index));
+            mediaObject->setCurrentSource(plman.at(index));
         }
         else if (repeat)
         {
-            mediaObject->setCurrentSource(sources.at(sources.size() - 1));
+            mediaObject->setCurrentSource(plman.at(plman.size() - 1));
         }
     }
     if (wasPlaying)
@@ -300,10 +247,10 @@ void MainWindow::tableClicked(int row, int /* column */)
     mediaObject->stop();
     mediaObject->clearQueue();
 
-    if (row >= sources.size())
+    if (row >= plman.size())
         return;
 
-    mediaObject->setCurrentSource(sources[row]);
+    mediaObject->setCurrentSource(plman[row]);
 
     mediaObject->play();
     int ind = shuffleList.indexOf(row);
@@ -314,99 +261,38 @@ void MainWindow::tableClicked(int row, int /* column */)
 
 void MainWindow::sourceChanged(const Phonon::MediaSource &source)
 {
-    musicTable->selectRow(sources.indexOf(source));
+    musicTable->selectRow(plman.indexOf(source));
     timeLcd->display("00:00");
 }
 
-void MainWindow::metaStateChanged(Phonon::State newState, Phonon::State /* oldState */)
-{
-    if (newState == Phonon::ErrorState)
-    {
-        QMessageBox::warning(this, tr("Error opening files"),
-        metaInformationResolver->errorString());
-        while (!sources.isEmpty() &&
-            !(sources.takeLast() == metaInformationResolver->currentSource())) {}  /* loop */;
-        return;
-    }
-
-    if (newState != Phonon::StoppedState && newState != Phonon::PausedState)
-    {
-        return;
-    }
-
-    if (metaInformationResolver->currentSource().type() == Phonon::MediaSource::Invalid)
-        return;
-
-    QMap<QString, QString> metaData = metaInformationResolver->metaData();
-
-    QString title = metaData.value("TITLE");
-    if (title == "")
-        title = metaInformationResolver->currentSource().fileName();
-
-    if (title == "")
-        title = metaInformationResolver->currentSource().url().toString();
-
-    QTableWidgetItem *titleItem = new QTableWidgetItem(title);
-    titleItem->setFlags(titleItem->flags() ^ Qt::ItemIsEditable);
-    QTableWidgetItem *artistItem = new QTableWidgetItem(metaData.value("ARTIST"));
-    artistItem->setFlags(artistItem->flags() ^ Qt::ItemIsEditable);
-    QTableWidgetItem *albumItem = new QTableWidgetItem(metaData.value("ALBUM"));
-    albumItem->setFlags(albumItem->flags() ^ Qt::ItemIsEditable);
-
-    int currentRow = musicTable->rowCount();
-    musicTable->insertRow(currentRow);
-    musicTable->setItem(currentRow, 0, artistItem);
-    musicTable->setItem(currentRow, 1, titleItem);
-    musicTable->setItem(currentRow, 2, albumItem);
-
-
-    if (musicTable->selectedItems().isEmpty())
-    {
-        musicTable->selectRow(0);
-        mediaObject->setCurrentSource(metaInformationResolver->currentSource());
-    }
-
-    Phonon::MediaSource source = metaInformationResolver->currentSource();
-    int index = sources.indexOf(metaInformationResolver->currentSource()) + 1;
-    if (sources.size() > index)
-    {
-        metaInformationResolver->setCurrentSource(sources.at(index));
-    }
-    else
-    {
-        musicTable->resizeColumnsToContents();
-/*        if (musicTable->columnWidth(0) > 300)
-            musicTable->setColumnWidth(0, 300);*/
-    }
-}
 
 void MainWindow::aboutToFinish()
 {
     qDebug () << "Abouttotfinish";
-    int index = sources.indexOf(mediaObject->currentSource()) + 1;
+    int index = plman.indexOf(mediaObject->currentSource()) + 1;
     if (shuffle)
     {
-        index = shuffleList.indexOf(sources.indexOf(mediaObject->currentSource())) + 1;
+        index = shuffleList.indexOf(plman.indexOf(mediaObject->currentSource())) + 1;
         if (index < shuffleList.size ())
         {
-            mediaObject->enqueue(sources.at (shuffleList[index]));
+            mediaObject->enqueue(plman.at (shuffleList[index]));
         }
         else if (repeat)
         {
-            mediaObject->enqueue(sources.at (shuffleList[0]));
+            mediaObject->enqueue(plman.at (shuffleList[0]));
         }
 
     }
     else
     {
-        if (sources.size() > index)
+        if (plman.size() > index)
         {
-            mediaObject->enqueue(sources.at(index));
+            mediaObject->enqueue(plman.at(index));
             qDebug () << "Enqueue " << index << " pfm " << mediaObject->prefinishMark();
         }
         else if (repeat)
         {
-            mediaObject->enqueue(sources.at(0));
+            mediaObject->enqueue(plman.at(0));
             qDebug () << "Enqueue " << 0 << " pfm " << mediaObject->prefinishMark();
         }
     }
@@ -482,65 +368,6 @@ void MainWindow::setupActions()
     connect(aboutQtAction, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
 }
 
-void MainWindow::savePlaylist()
-{
-    QString filename = QFileDialog::getSaveFileName(this, tr("Please select file name"), "", "Playlist Files (*.m3u)");
-    if (filename.isEmpty())
-        return;
-    if (filename.length() < 4 || filename.right(4).toLower() != ".m3u")
-        filename += ".m3u";
-    QFile f (filename);
-    try
-    {
-        f.open(QFile::WriteOnly);
-        for (int i = 0; i < sources.size(); ++i)
-        {
-            if (sources[i].type() == Phonon::MediaSource::LocalFile)
-                f.write (sources[i].fileName().toAscii());
-            else
-                f.write(sources[i].url().toString().toAscii());
-            f.write ("\n");
-        }
-        f.close ();
-    }
-    catch (...)
-    {
-        QMessageBox::critical(this, "Write error", "Could not write playlist file", QMessageBox::Ok);
-    }
-}
-
-void MainWindow::loadPlaylist()
-{
-    QString filename = QFileDialog::getOpenFileName(this, tr("Select playlist file to load"), "", "*.m3u");
-    QFile f(filename);
-    f.open (QFile::ReadOnly);
-    QString tmp = f.readAll();
-    f.close ();
-    QStringList lines = tmp.split("\n");
-    clearPlaylist();
-    foreach (QString l, lines)
-    {
-        if (l.isEmpty() || (!QFileInfo (l).exists() && (l.indexOf("http") != 0)))
-        {
-            qDebug () << "not loadable: " << l;\
-            continue;
-        }
-        qDebug () << "Load " << l;
-        Phonon::MediaSource source(l);
-        sources.append(source);
-    }
-    if (!sources.isEmpty())
-        metaInformationResolver->setCurrentSource(sources.at(0));
-    setupShuffleList();
-}
-
-void MainWindow::clearPlaylist()
-{
-    sources.clear();
-    while (musicTable->rowCount())
-        musicTable->removeRow(0);
-    mediaObject->clear();
-}
 
 void MainWindow::repeatToggle ()
 {
@@ -559,6 +386,11 @@ void MainWindow::volumeToggle ()
 {
     qDebug () << "Volumetoggle: " << volumeAction->isChecked();
     volumeSlider->setVisible(volumeAction->isChecked());
+}
+
+void MainWindow::play()
+{
+
 }
 
 
@@ -663,15 +495,15 @@ void MainWindow::cellClicked(int row, int)
 {
     if (mediaObject->state() == Phonon::PlayingState)
     {
-        int index = sources.indexOf(mediaObject->currentSource());
+        int index = plman.indexOf(mediaObject->currentSource());
         if (index >= 0)
         {
             musicTable->selectRow(index);
         }
     }
-    else if (row < sources.size())
+    else if (row < plman.size())
     {
-        mediaObject->setCurrentSource(sources[row]);
+        mediaObject->setCurrentSource(plman.at(row));
         shuffleList.removeAll(row);
         shuffleList.insert(0, row);
         qDebug () << shuffleList;
@@ -681,10 +513,10 @@ void MainWindow::cellClicked(int row, int)
 void MainWindow::setupShuffleList()
 {
     QList<int> tmp;
-    int index = sources.indexOf(mediaObject->currentSource());
+    int index = plman.indexOf(mediaObject->currentSource());
     if (index < 0)
         index = 0;
-    for (int i = 0; i < sources.size(); ++i)
+    for (int i = 0; i < plman.size(); ++i)
     {
         if (i != index)
             tmp.append(i);
