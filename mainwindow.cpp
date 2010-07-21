@@ -126,7 +126,7 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
 //                QMessageBox::warning(this, tr("Error"),
 //                mediaObject->errorString());
             }
-            next ();
+//            next ();
             break;
         case Phonon::PlayingState:
             setWindowTitle(mediaObject->metaData().value("TITLE") + " - TomAmp");
@@ -172,15 +172,20 @@ void MainWindow::next()
     bool wasPlaying = (mediaObject->state () == Phonon::PlayingState);
     if (mediaObject->state () == Phonon::ErrorState)
         wasPlaying = true;
-    int index = plman.indexOf(mediaObject->currentSource()) + 1;
+    qDebug () << "Getting index of current playing";
+    int index = plman.indexOf(mediaObject->currentSource());
+    qDebug () << "Next index is " << index;
     if (shuffle)
     {
+        qDebug () << "Shuffle next";
         index = shuffleList.indexOf(plman.indexOf(mediaObject->currentSource()));
         do
         {
             index += 1;
+            qDebug () << "Index increase a " << index;
         }
         while (index < shuffleList.size () && !plman.getItem(index).playable);
+        qDebug () << "Shuffle next 2 " << index;
         if (index < shuffleList.size ())
         {
             mediaObject->setCurrentSource(plman.at (shuffleList[index]));
@@ -190,6 +195,7 @@ void MainWindow::next()
             index = 0;
             do
             {
+                qDebug () << "Index increase 2a " << index;
                 index += 1;
             }
             while (index < shuffleList.size () && !plman.getItem(index).playable);
@@ -200,10 +206,15 @@ void MainWindow::next()
     }
     else
     {
-        while (index < plman.size () && !plman.getItem(index).playable);
+        qDebug () << "Normal next";
+        while ((index + 1) < plman.size ())
         {
             index += 1;
+            qDebug () << "Index increase " << index;
+            if (plman.getItem(index).playable)
+                break;
         }
+        qDebug () << "Normal next 2 " << index;
         if (plman.size() > index)
         {
             mediaObject->setCurrentSource(plman.at(index));
@@ -213,12 +224,16 @@ void MainWindow::next()
             index = 0;
             do
             {
+                qDebug () << "Index increase 2 " << index;
                 index += 1;
+                if (plman.getItem(index).playable)
+                    break;
             }
-            while (index < shuffleList.size () && !plman.getItem(index).playable);
+            while ((index + 1) < shuffleList.size ());
             mediaObject->setCurrentSource(plman.at(index));
         }
     }
+    musicTable->selectRow (plman.indexOf(mediaObject->currentSource()));
     if (wasPlaying)
         mediaObject->play();
 }
@@ -274,7 +289,7 @@ void MainWindow::tableClicked(int row, int /* column */)
         return;
 
     int index = row;
-    while (index < plman.size () && !plman.getItem(index).playable);
+    while (index < plman.size () && !plman.getItem(index).playable)
     {
         index += 1;
     }
@@ -526,9 +541,9 @@ void MainWindow::setupUi()
     qDebug () << "cucc: " << musicTable->columnWidth(1);
 }
 
-void MainWindow::cellClicked(int row, int)
+void MainWindow::cellClicked(int /*row*/, int)
 {
-    if (mediaObject->state() == Phonon::PlayingState)
+    /*if (mediaObject->state() == Phonon::PlayingState)
     {
         int index = plman.indexOf(mediaObject->currentSource());
         if (index >= 0)
@@ -542,7 +557,7 @@ void MainWindow::cellClicked(int row, int)
         shuffleList.removeAll(row);
         shuffleList.insert(0, row);
         qDebug () << shuffleList;
-    }
+    }*/
 }
 
 void MainWindow::setupShuffleList()
@@ -553,7 +568,7 @@ void MainWindow::setupShuffleList()
         index = 0;
     for (int i = 0; i < plman.size(); ++i)
     {
-        if (i != index)
+        if ((i != index))
             tmp.append(i);
     }
     shuffleList.clear();
