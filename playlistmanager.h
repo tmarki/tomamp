@@ -18,16 +18,17 @@ struct PlaylistItem
     bool operator ==(const Phonon::MediaSource& s) const { return source == s; }
 };
 
-class PlaylistManager
+class PlaylistManager : public QObject
 {
+    Q_OBJECT
 public:
     PlaylistManager(QWidget* parent);
     void addStringList (const QStringList&);
     void parseAndAddFolder (const QString& dir, bool recursive);
 
-    QStringList playlist () const { return QStringList (); }
+    QStringList playlistStrings () const;
     int size () const { return items.size (); }
-    int indexOf (const Phonon::MediaSource& s) const  { return items.indexOf (s); }
+    int indexOf (const Phonon::MediaSource& s) const;
     const Phonon::MediaSource& at (int i) { return items[i].source; }
     const PlaylistItem& getItem (int i) const { return items[i]; }
 public slots:
@@ -35,7 +36,8 @@ public slots:
     void loadPlaylist(const QString& filename);
     void clearPlaylist();
 signals:
-    void playlistChanged (QStringList newItems);
+    void playlistChanged (int from);
+    void itemUpdated (int index);
 private slots:
     void metaStateChanged(Phonon::State newState, Phonon::State oldState);
 private:

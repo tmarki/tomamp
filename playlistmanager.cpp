@@ -1,5 +1,6 @@
 #include "playlistmanager.h"
 #include <QDir>
+#include <QUrl>
 
 PlaylistManager::PlaylistManager(QWidget* parent)
     : parentWidget (parent)
@@ -7,6 +8,16 @@ PlaylistManager::PlaylistManager(QWidget* parent)
     metaInformationResolver = new Phonon::MediaObject(parent);
     connect(metaInformationResolver, SIGNAL(stateChanged(Phonon::State,Phonon::State)),
         this, SLOT(metaStateChanged(Phonon::State,Phonon::State)));
+}
+
+int PlaylistManager::indexOf(const Phonon::MediaSource &s) const
+{
+    for (int i = 0; i < items.size(); ++i)
+    {
+        if (items[i].source == s)
+            return i;
+    }
+    return -1;
 }
 
 void PlaylistManager::parseAndAddFolder(const QString &dir, bool recursive)
@@ -21,7 +32,7 @@ void PlaylistManager::parseAndAddFolder(const QString &dir, bool recursive)
 
     qDebug () << "Parsing folder " << dir;
 
-    settings.setValue("LastFolder", dir);
+    //settings.setValue("LastFolder", dir);
     int index = items.size();
     foreach (QString string, files)
     {
@@ -35,11 +46,13 @@ void PlaylistManager::parseAndAddFolder(const QString &dir, bool recursive)
                 parseAndAddFolder(fname, true);
             continue;
         }
-        qDebug () << fname;
+        qDebug () << "Adding: " << fname;
         items.append(PlaylistItem (PlaylistItem (fname)));
     }
     if (!items.isEmpty())
         metaInformationResolver->setCurrentSource(items.at(index).source);
+    qDebug () << " SIZE: " << items.size ();
+    emit playlistChanged (index);
 }
 
 void PlaylistManager::addStringList(const QStringList& list)
@@ -47,10 +60,12 @@ void PlaylistManager::addStringList(const QStringList& list)
     int index = items.size();
     foreach (QString string, list)
     {
+        qDebug () << "Adding " << string;
         items.append(PlaylistItem (string));
     }
     if (!items.isEmpty())
         metaInformationResolver->setCurrentSource(items.at(index).source);
+    emit playlistChanged(index);
 }
 
 void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State /* oldState */)
@@ -59,9 +74,12 @@ void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State /* 
     {
 //        QMessageBox::warning(this, tr("Error opening files"),
 //        metaInformationResolver->errorString());
-        while (!items.isEmpty() &&
-            !(items.takeLast().source == metaInformationResolver->currentSource())) {}  /* loop */;
-        qDebug () << items.size();
+//        while (!items.isEmpty() &&
+//            !(items.takeLast().source == metaInformationResolver->currentSource())) {}  /* loop */;
+        int index = indexOf (metaInformationResolver->currentSource());
+        if (index >= 0 && items.size () > index - 1)
+            metaInformationResolver->setCurrentSource(items[index + 1].source);
+        qDebug () << "Error for item " << index;
 /*        int index = sources.indexOf(metaInformationResolver->currentSource());
         if (index >= 0)
         {
@@ -89,25 +107,40 @@ void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State /* 
 
     if (metaInformationResolver->currentSource().type() == Phonon::MediaSource::Invalid)
         return;
-    qDebug () << "Reading meta info of " << metaInformationResolver->currentSource().fileName() << " " << metaInformationResolver->currentSource().type();
+    int index = indexOf (metaInformationResolver->currentSource());
+    qDebug () << "Reading meta info of " << metaInformationResolver->currentSource().fileName() << " " << index;
 
-    qDebug () << "Index of this source is " << items.indexOf(metaInformationResolver->currentSource());
+    qDebug () << "Index of this source is " << indexOf(metaInformationResolver->currentSource());
 
     QMap<QString, QString> metaData = metaInformationResolver->metaData();
 
-    QString title = metaData.value("TITLE");
+/*    QString title = metaData.value("TITLE");
     if (title == "")
         title = metaInformationResolver->currentSource().fileName();
 
     if (title == "")
-        title = metaInformationResolver->currentSource().url().toString();
+        title = metaInformationResolver->currentSource().url().toString();*/
 
-    QTableWidgetItem *titleItem = new QTableWidgetItem(title);
+    if (index >= 0)
+    {
+        items[index].artist = metaData.value("ARTIST");
+        items[index].title = metaData.value("TITLE");
+        items[index].album = metaData.value("ALBUM");
+        if (metaData.isEmpty())
+            qDebug () << "Detected to be empty: " << items[index].uri;
+        else
+            items[index].playable = true;
+        emit itemUpdated (index);
+        if (index >= 0 && items.size () > index + 1)
+            metaInformationResolver->setCurrentSource(items[index + 1].source);
+    }
+
+    /*QTableWidgetItem *titleItem = new QTableWidgetItem(title);
     titleItem->setFlags(titleItem->flags() ^ Qt::ItemIsEditable);
     QTableWidgetItem *artistItem = new QTableWidgetItem(metaData.value("ARTIST"));
     artistItem->setFlags(artistItem->flags() ^ Qt::ItemIsEditable);
     QTableWidgetItem *albumItem = new QTableWidgetItem(metaData.value("ALBUM"));
-    albumItem->setFlags(albumItem->flags() ^ Qt::ItemIsEditable);
+    albumItem->setFlags(albumItem->flags() ^ Qt::ItemIsEditable);*/
 
 /*    int currentRow = musicTable->rowCount();
     musicTable->insertRow(currentRow);
@@ -135,9 +168,9 @@ void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State /* 
     }*/
 }
 
-void PlaylistManager::savePlaylist(const QString& filename)
+void PlaylistManager::savePlaylist(const QString& filenam)
 {
-//    QString filename = QFileDialog::getSaveFileName(parentWidget, tr("Please select file name"), "", "Playlist Files (*.m3u)");
+    QString filename = filenam;
     if (filename.isEmpty())
         return;
     if (filename.length() < 4 || filename.right(4).toLower() != ".m3u")
@@ -161,7 +194,7 @@ void PlaylistManager::savePlaylist(const QString& filename)
 
 void PlaylistManager::loadPlaylist(const QString& filename)
 {
-//    QString filename = QFileDialog::getOpenFileName(parentWidget, tr("Select playlist file to load"), "", "*.m3u");
+    qDebug () << "Attempting to load playlist: " << filename;
     QFile f(filename);
     f.open (QFile::ReadOnly);
     QString tmp = f.readAll();
@@ -172,7 +205,6 @@ void PlaylistManager::loadPlaylist(const QString& filename)
     {
         if (l.isEmpty() || (!QFileInfo (l).exists() && (l.indexOf("http") != 0)))
         {
-            qDebug () << "not loadable: " << l;\
             continue;
         }
         qDebug () << "Load " << l;
@@ -180,12 +212,23 @@ void PlaylistManager::loadPlaylist(const QString& filename)
     }
     if (!items.isEmpty())
         metaInformationResolver->setCurrentSource(items.at(0).source);
+    emit playlistChanged (0);
 }
 
-void MainWindow::clearPlaylist()
+void PlaylistManager::clearPlaylist()
 {
     items.clear();
+    emit playlistChanged(0);
 /*    while (musicTable->rowCount())
         musicTable->removeRow(0);
     mediaObject->clear();*/
+}
+
+QStringList PlaylistManager::playlistStrings() const
+{
+    QStringList ret;
+    for (int i = 0; i < items.size (); ++i)
+        ret << items[i].uri;
+    qDebug () << "Returning playlist " << ret << " SIZE: " << items.size ();
+    return ret;
 }

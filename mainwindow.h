@@ -88,12 +88,17 @@ private slots:
     void next();
     void previous();
     void cellClicked(int row, int column);
+    void savePlaylist ();
+    void loadPlaylist ();
+    void playlistChanged (int from);
+    void itemUpdated (int index);
 
 private:
     void setupActions();
     void setupMenus();
     void setupUi();
     void setupShuffleList();
+    void setRowFromItem (int row, const PlaylistItem& item);
 
     Phonon::SeekSlider *seekSlider;
     Phonon::MediaObject *mediaObject;
