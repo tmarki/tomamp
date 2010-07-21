@@ -92,6 +92,7 @@ private slots:
     void loadPlaylist ();
     void playlistChanged (int from);
     void itemUpdated (int index);
+    void setItem (int ind);
 
 private:
     void setupActions();
