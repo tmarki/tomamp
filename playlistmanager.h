@@ -25,6 +25,7 @@ public:
     PlaylistManager(QWidget* parent);
     void addStringList (const QStringList&);
     void parseAndAddFolder (const QString& dir, bool recursive);
+    void removeItem (int i);
 
     QStringList playlistStrings () const;
     int size () const { return items.size (); }

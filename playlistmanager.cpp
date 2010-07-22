@@ -196,7 +196,8 @@ void PlaylistManager::loadPlaylist(const QString& filename)
 {
     qDebug () << "Attempting to load playlist: " << filename;
     QFile f(filename);
-    f.open (QFile::ReadOnly);
+    if (!f.open (QFile::ReadOnly))
+        return;
     QString tmp = f.readAll();
     f.close ();
     QStringList lines = tmp.split("\n");
@@ -231,4 +232,10 @@ QStringList PlaylistManager::playlistStrings() const
         ret << items[i].uri;
     qDebug () << "Returning playlist " << ret << " SIZE: " << items.size ();
     return ret;
+}
+
+void PlaylistManager::removeItem(int i)
+{
+    items.removeAt (i);
+    emit playlistChanged(i);
 }

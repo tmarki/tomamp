@@ -92,8 +92,14 @@ private slots:
     void loadPlaylist ();
     void playlistChanged (int from);
     void itemUpdated (int index);
-    void setItem (int ind);
+    void setItem (int ind, bool doplay);
+    void removeSelectedItem ();
+    void removeAllButSelectedItem ();
+    void highlightRow (int i);
+    void unhighlightRow (int i);
 
+protected:
+    void contextMenuEvent (QContextMenuEvent*e);
 private:
     void setupActions();
     void setupMenus();
@@ -126,6 +132,9 @@ private:
     QAction *exitAction;
     QAction *aboutAction;
     QAction *aboutQtAction;
+    QAction *removeSelected;
+    QAction *removeAllButSelected;
+    QMenu   *contextMenu;
     QToolBar *bar;
     QLCDNumber *timeLcd;
     QTableWidget *musicTable;
@@ -133,6 +142,7 @@ private:
     bool        shuffle;
     QSettings settings;
     QList<int>  shuffleList;
+    int lastPlayed;
 };
 
 #endif
