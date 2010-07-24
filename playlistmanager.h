@@ -36,11 +36,14 @@ public slots:
     void savePlaylist(const QString& filename);
     void loadPlaylist(const QString& filename);
     void clearPlaylist();
+    void addPlaylist (const QString& filename);
 signals:
     void playlistChanged (int from);
     void itemUpdated (int index);
 private slots:
     void metaStateChanged(Phonon::State newState, Phonon::State oldState);
+    void appendPlaylist (const QString& filename);
+    void appendPlaylistPLS (const QString& filename);
 private:
 
     Phonon::MediaObject *metaInformationResolver;

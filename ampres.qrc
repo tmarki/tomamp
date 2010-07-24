@@ -8,5 +8,8 @@
         <file alias="repeat">images/Button Reload.png</file>
         <file alias="stop">images/Button Stop.png</file>
         <file alias="previous">images/Button Previous.png</file>
+        <file alias="shuffleActive">images/shuffle Active.png</file>
+        <file alias="repeatActive">images/Button Reload Active.png</file>
+        <file alias="tomamp">images/Tomamp.png</file>
     </qresource>
 </RCC>

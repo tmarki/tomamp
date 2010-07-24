@@ -39,6 +39,7 @@ MainWindow::MainWindow()
     if (curind >= 0)
         setItem (curind, false);
     audioOutput->setVolume(settings.value("volume", .5).toReal());
+    QApplication::setWindowIcon(QIcon (QPixmap (":images/tomamp")));
 }
 
 MainWindow::~MainWindow()
@@ -61,7 +62,7 @@ void MainWindow::addFiles()
     if (folder.isEmpty())
         folder = QDesktopServices::storageLocation(QDesktopServices::MusicLocation);
     QStringList files = QFileDialog::getOpenFileNames(this, tr("Select Files To Add"),
-                    folder);
+                    folder, "Music files (*.mp3 *.ogg *.wav *.flac);;Playlists (*.m3u *.pls)");
 
     if (files.isEmpty())
         return;
@@ -71,7 +72,10 @@ void MainWindow::addFiles()
     QStringList toadd;
     foreach (QString string, files)
     {
-        toadd.append (string);
+        if (string.toLower().endsWith(".pls") || string.toLower().endsWith(".m3u"))
+            plman.addPlaylist(string);
+        else
+            toadd.append (string);
     }
     plman.addStringList(toadd);
 }
@@ -116,7 +120,7 @@ void MainWindow::about()
         tr("TomAmp is a simple playlist-based music player.\n\n"
         "(c) 2010 Tamas Marki <tmarki@gmail.com>\n\n"
         "Please send comments and bug reports to the above e-mail address.\n\n"
-        "Icons by deleket (http://www.deleket.com)"));
+        "Icons by http://itweek.deviantart.com/"));
 }
 
 void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState */)
@@ -147,6 +151,7 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
             lastPlayed = plman.indexOf(mediaObject->currentSource());
             break;
         case Phonon::StoppedState:
+            setWindowTitle("TomAmp");
             stopAction->setEnabled(false);
             playAction->setEnabled(true);
             pauseAction->setVisible(false);
@@ -487,11 +492,17 @@ void MainWindow::setupActions()
     nextAction->setShortcut(tr("Ctrl+N"));
     previousAction = new QAction(QIcon (QPixmap (":images/previous")), tr("Previous"), this);
     previousAction->setShortcut(tr("Ctrl+R"));
-    repeatAction = new QAction(QIcon (QPixmap (":images/repeat")), tr("Repeat"), this);
+    if (repeat)
+        repeatAction = new QAction(QIcon (QPixmap (":images/repeatActive")), tr("Repeat"), this);
+    else
+        repeatAction = new QAction(QIcon (QPixmap (":images/repeat")), tr("Repeat"), this);
     repeatAction->setCheckable(true);
     repeatAction->setChecked(repeat);
     repeatAction->setShortcut(tr("Ctrl+I"));
-    shuffleAction = new QAction(QIcon (QPixmap (":images/shuffle")), tr("Shuffle"), this);
+    if (shuffle)
+        shuffleAction = new QAction(QIcon (QPixmap (":images/shuffleActive")), tr("Shuffle"), this);
+    else
+        shuffleAction = new QAction(QIcon (QPixmap (":images/shuffle")), tr("Shuffle"), this);
     shuffleAction->setCheckable(true);
     shuffleAction->setChecked(shuffle);
     shuffleAction->setShortcut(tr("Ctrl+H"));
@@ -567,12 +578,20 @@ void MainWindow::repeatToggle ()
     repeat = !repeat;
     qDebug() << "Repeat toggled to " << repeat;
     settings.setValue("repeat", QVariant (repeat));
+    if (repeat)
+        repeatAction->setIcon(QIcon (QPixmap (":images/repeatActive")));
+    else
+        repeatAction->setIcon(QIcon (QPixmap (":images/repeat")));
 }
 
 void MainWindow::shuffleToggle ()
 {
     shuffle = !shuffle;
     settings.setValue("shuffle", QVariant (shuffle));
+    if (shuffle)
+        shuffleAction->setIcon(QIcon (QPixmap (":images/shuffleActive")));
+    else
+        shuffleAction->setIcon(QIcon (QPixmap (":images/shuffle")));
 }
 
 void MainWindow::volumeToggle ()
@@ -703,6 +722,8 @@ void MainWindow::cellClicked(int /*row*/, int)
 void MainWindow::contextMenuEvent (QContextMenuEvent*e)
 {
     qDebug () << "Context menu event!";
+    if (childAt (e->pos())->parentWidget() != musicTable)
+        return;
     contextMenu->popup(e->globalPos());
 }
 
@@ -731,13 +752,17 @@ void MainWindow::setupShuffleList()
 
 void MainWindow::savePlaylist ()
 {
-    QString filename = QFileDialog::getSaveFileName(this, tr("Please select file name"), "", "Playlist Files (*.m3u)");
-    plman.loadPlaylist(filename);
+    QString filename = QFileDialog::getSaveFileName(this, tr("Please select file name"), "", "Playlist Files (*.m3u *.pls)");
+    if (filename.isEmpty())
+        return;
+    plman.savePlaylist(filename);
 }
 
 void MainWindow::loadPlaylist ()
 {
-    QString filename = QFileDialog::getOpenFileName(this, tr("Select playlist file to load"), "", "*.m3u");
+    QString filename = QFileDialog::getOpenFileName(this, tr("Select playlist file to load"), "", "*.m3u *.pls");
+    if (filename.isEmpty())
+        return;
     plman.loadPlaylist (filename);
 }
 

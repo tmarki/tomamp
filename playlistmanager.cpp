@@ -1,6 +1,7 @@
 #include "playlistmanager.h"
 #include <QDir>
 #include <QUrl>
+#include <QMap>
 
 PlaylistManager::PlaylistManager(QWidget* parent)
     : parentWidget (parent)
@@ -173,17 +174,38 @@ void PlaylistManager::savePlaylist(const QString& filenam)
     QString filename = filenam;
     if (filename.isEmpty())
         return;
-    if (filename.length() < 4 || filename.right(4).toLower() != ".m3u")
-        filename += ".m3u";
+    bool writepls = false;
+    if (filename.length() < 4 || (filename.right(4).toLower() != ".m3u" && filename.right(4).toLower() != ".pls"))
+    {
+        filename += ".pls";
+        writepls = true;
+    }
+    else if (filename.right(4).toLower() == ".pls")
+        writepls = true;
     QFile f (filename);
     try
     {
         f.open(QFile::WriteOnly);
+        if (writepls)
+        {
+            f.write ("[playlist]\n");
+            f.write (QString ("NumberOfEntries=%1\n").arg (items.size ()).toAscii());
+        }
         for (int i = 0; i < items.size(); ++i)
         {
-            f.write (items[i].uri.toAscii());
-            f.write ("\n");
+            if (writepls)
+            {
+                f.write (QString ("File%1=%2\n").arg (i + 1).arg (items[i].uri).toAscii());
+                f.write (QString ("Title%1=%2 - %3 - %4\n").arg (i + 1).arg (items[i].artist).arg (items[i].title).arg (items[i].album).toAscii());
+            }
+            else
+            {
+                f.write (items[i].uri.toAscii());
+                f.write ("\n");
+            }
         }
+        if (writepls)
+            f.write ("Version=2\n");
         f.close ();
     }
     catch (...)
@@ -194,6 +216,34 @@ void PlaylistManager::savePlaylist(const QString& filenam)
 
 void PlaylistManager::loadPlaylist(const QString& filename)
 {
+    clearPlaylist();
+    if (filename.right(4).toLower() == ".m3u")
+        appendPlaylist(filename);
+    else if (filename.right(4).toLower() == ".pls")
+        appendPlaylistPLS(filename);
+    if (!items.isEmpty())
+    {
+        metaInformationResolver->setCurrentSource(items.at(0).source);
+    }
+    emit playlistChanged (0);
+}
+
+void PlaylistManager::addPlaylist(const QString& filename)
+{
+    int index = items.size();
+    if (filename.right(4).toLower() == ".m3u")
+        appendPlaylist(filename);
+    else if (filename.right(4).toLower() == ".pls")
+        appendPlaylistPLS(filename);
+    if (!items.isEmpty())
+    {
+        metaInformationResolver->setCurrentSource(items.at(index).source);
+        emit playlistChanged (index);
+    }
+}
+
+void PlaylistManager::appendPlaylist(const QString& filename)
+{
     qDebug () << "Attempting to load playlist: " << filename;
     QFile f(filename);
     if (!f.open (QFile::ReadOnly))
@@ -201,7 +251,6 @@ void PlaylistManager::loadPlaylist(const QString& filename)
     QString tmp = f.readAll();
     f.close ();
     QStringList lines = tmp.split("\n");
-    clearPlaylist();
     foreach (QString l, lines)
     {
         if (l.isEmpty() || (!QFileInfo (l).exists() && (l.indexOf("http") != 0)))
@@ -211,10 +260,61 @@ void PlaylistManager::loadPlaylist(const QString& filename)
         qDebug () << "Load " << l;
         items.append(PlaylistItem (l));
     }
-    if (!items.isEmpty())
-        metaInformationResolver->setCurrentSource(items.at(0).source);
-    emit playlistChanged (0);
 }
+
+void PlaylistManager::appendPlaylistPLS(const QString& filename)
+{
+    qDebug () << "Attempting to load playlist: " << filename;
+    QFile f(filename);
+    if (!f.open (QFile::ReadOnly))
+        return;
+    QString tmp = f.readAll();
+    f.close ();
+    QStringList lines = tmp.split("\n");
+    QMap<int, int> filemap;
+
+    foreach (QString l, lines)
+    {
+        if (l.isEmpty() || l.trimmed().toLower() == "[playlist]" || l.trimmed().toLower() == "version=2")
+        {
+            continue;
+        }
+        qDebug () << "PLS " << l;
+        if (l.trimmed().toLower().left(4) == "file")
+        {
+            QStringList tokens = l.split('=');
+            if (tokens.size () < 2)
+                continue;
+            tokens[0] = tokens[0].mid (4);
+            filemap.insert(tokens[0].toInt (), items.size ());
+            qDebug () << tokens;
+            items.append(PlaylistItem (tokens[1]));
+        }
+        else if (l.trimmed().toLower().left(5) == "title")
+        {
+            QStringList tokens = l.split('=');
+            if (tokens.size () < 2)
+                continue;
+            tokens[0] = tokens[0].mid (5);
+            int toupdate = filemap[tokens[0].toInt()];
+            qDebug () << "Need to update " << toupdate << " for " << l;
+            QStringList metatok = tokens[1].split (" - ");
+            qDebug () << metatok;
+            if (metatok.size() > 2 && toupdate >= 0 && toupdate < items.size ())
+            {
+                items[toupdate].artist = metatok[0];
+                items[toupdate].title = metatok[1];
+                metatok = metatok.mid (2);
+                items[toupdate].album = metatok.join (" - ");
+            }
+            else
+            {
+                items[toupdate].title = metatok.join (" - ");
+            }
+        }
+    }
+}
+
 
 void PlaylistManager::clearPlaylist()
 {
