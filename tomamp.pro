@@ -31,3 +31,6 @@ symbian {
 
 RESOURCES += \
     ampres.qrc
+
+OTHER_FILES += \
+    bugs.txt
