@@ -45,6 +45,7 @@ private slots:
     void appendPlaylist (const QString& filename);
     void appendPlaylistPLS (const QString& filename);
 private:
+    bool fileSupported (const QString& fname) const;
 
     Phonon::MediaObject *metaInformationResolver;
     QList<PlaylistItem> items;

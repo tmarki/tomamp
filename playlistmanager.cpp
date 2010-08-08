@@ -47,8 +47,11 @@ void PlaylistManager::parseAndAddFolder(const QString &dir, bool recursive)
                 parseAndAddFolder(fname, true);
             continue;
         }
-        qDebug () << "Adding: " << fname;
-        items.append(PlaylistItem (PlaylistItem (fname)));
+        if (fileSupported(fname))
+        {
+            qDebug () << "Adding: " << fname;
+            items.append(PlaylistItem (PlaylistItem (fname)));
+        }
     }
     if (!items.isEmpty())
         metaInformationResolver->setCurrentSource(items.at(index).source);
@@ -61,47 +64,44 @@ void PlaylistManager::addStringList(const QStringList& list)
     int index = items.size();
     foreach (QString string, list)
     {
-        qDebug () << "Adding " << string;
-        items.append(PlaylistItem (string));
+        if (fileSupported(string) || string.toLower().startsWith("http"))
+        {
+            qDebug () << "Adding " << string;
+            items.append(PlaylistItem (string));
+        }
     }
     if (!items.isEmpty())
         metaInformationResolver->setCurrentSource(items.at(index).source);
     emit playlistChanged(index);
 }
 
-void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State /* oldState */)
+void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State oldState)
 {
+    qDebug () << "Meta state now " << newState << " old state " << oldState;
+    if (oldState == Phonon::ErrorState)
+    {
+/*        int index = indexOf (metaInformationResolver->currentSource());
+        metaInformationResolver->setCurrentSource(items[index].source);*/
+    }
     if (newState == Phonon::ErrorState)
     {
-//        QMessageBox::warning(this, tr("Error opening files"),
-//        metaInformationResolver->errorString());
-//        while (!items.isEmpty() &&
-//            !(items.takeLast().source == metaInformationResolver->currentSource())) {}  /* loop */;
         int index = indexOf (metaInformationResolver->currentSource());
-        if (index >= 0 && items.size () > index - 1)
-            metaInformationResolver->setCurrentSource(items[index + 1].source);
-        qDebug () << "Error for item " << index;
-/*        int index = sources.indexOf(metaInformationResolver->currentSource());
-        if (index >= 0)
+        if (index >= 0 && items.size () > index + 1)
         {
-            sources.removeAt(index);
-            qDebug () << "Removing invalid file in " << index << ": " << metaInformationResolver->currentSource().fileName();
-            if (sources.size() > index)
-            {
-                metaInformationResolver->setCurrentSource(sources.at(index));
-                qDebug () << "Setting new info source " << sources.at(index).fileName();
-            }
-        }*/
-//        int index = sources.indexOf(metaInformationResolver->currentSource()) + 1;
-//        sources.removeAt(index - 1);
-//        if (items.size())
-//        {
-//            metaInformationResolver->setCurrentSource(sources.at(0));
-//        }
+/*            metaInformationResolver->disconnect();
+            delete metaInformationResolver;
+            metaInformationResolver = new Phonon::MediaObject(parent());
+            connect(metaInformationResolver, SIGNAL(stateChanged(Phonon::State,Phonon::State)),
+                this, SLOT(metaStateChanged(Phonon::State,Phonon::State)));*/
+            metaInformationResolver->setCurrentSource(items[index + 1].source);
+//            metaInformationResolver->clear();
+            qDebug () << "Set " << items[index + 1].source.fileName() << " error type: " << metaInformationResolver->errorString() << " (" << metaInformationResolver->errorType() << ")";
+        }
+        qDebug () << "Error for item " << index;
         return;
     }
 
-    if (newState != Phonon::StoppedState && newState != Phonon::PausedState)
+    if (newState != Phonon::StoppedState/* && newState != Phonon::PausedState*/)
     {
         return;
     }
@@ -109,24 +109,17 @@ void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State /* 
     if (metaInformationResolver->currentSource().type() == Phonon::MediaSource::Invalid)
         return;
     int index = indexOf (metaInformationResolver->currentSource());
-    qDebug () << "Reading meta info of " << metaInformationResolver->currentSource().fileName() << " " << index;
-
-    qDebug () << "Index of this source is " << indexOf(metaInformationResolver->currentSource());
+    qDebug () << "Reading meta info of " << metaInformationResolver->currentSource().fileName() << " => " << index;
 
     QMap<QString, QString> metaData = metaInformationResolver->metaData();
 
-/*    QString title = metaData.value("TITLE");
-    if (title == "")
-        title = metaInformationResolver->currentSource().fileName();
-
-    if (title == "")
-        title = metaInformationResolver->currentSource().url().toString();*/
 
     if (index >= 0)
     {
         items[index].artist = metaData.value("ARTIST");
         items[index].title = metaData.value("TITLE");
         items[index].album = metaData.value("ALBUM");
+        qDebug () << "Info is: " << items[index].artist << " - " << items[index].title;
         if (metaData.isEmpty())
             qDebug () << "Detected to be empty: " << items[index].uri;
         else
@@ -135,38 +128,6 @@ void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State /* 
         if (index >= 0 && items.size () > index + 1)
             metaInformationResolver->setCurrentSource(items[index + 1].source);
     }
-
-    /*QTableWidgetItem *titleItem = new QTableWidgetItem(title);
-    titleItem->setFlags(titleItem->flags() ^ Qt::ItemIsEditable);
-    QTableWidgetItem *artistItem = new QTableWidgetItem(metaData.value("ARTIST"));
-    artistItem->setFlags(artistItem->flags() ^ Qt::ItemIsEditable);
-    QTableWidgetItem *albumItem = new QTableWidgetItem(metaData.value("ALBUM"));
-    albumItem->setFlags(albumItem->flags() ^ Qt::ItemIsEditable);*/
-
-/*    int currentRow = musicTable->rowCount();
-    musicTable->insertRow(currentRow);
-    musicTable->setItem(currentRow, 0, artistItem);
-    musicTable->setItem(currentRow, 1, titleItem);
-    musicTable->setItem(currentRow, 2, albumItem);*/
-
-
-/*    if (musicTable->selectedItems().isEmpty())
-    {
-        musicTable->selectRow(0);
-        qDebug () << "Setting current media " + metaInformationResolver->currentSource().fileName();
-        mediaObject->setCurrentSource(metaInformationResolver->currentSource());
-    }
-
-    Phonon::MediaSource source = metaInformationResolver->currentSource();
-    int index = sources.indexOf(metaInformationResolver->currentSource()) + 1;
-    if (sources.size() > index)
-    {
-        metaInformationResolver->setCurrentSource(sources.at(index));
-    }
-    else
-    {
-        musicTable->resizeColumnsToContents();
-    }*/
 }
 
 void PlaylistManager::savePlaylist(const QString& filenam)
@@ -338,4 +299,12 @@ void PlaylistManager::removeItem(int i)
 {
     items.removeAt (i);
     emit playlistChanged(i);
+}
+
+bool PlaylistManager::fileSupported (const QString& fname) const
+{
+    QString ext = fname.right(3).toLower();
+//    if (ext != "mp3")
+//        return false;
+    return true;
 }

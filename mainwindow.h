@@ -85,6 +85,7 @@ private slots:
     void finished();
     void tableClicked(int row, int column);
     void play();
+    void stop();
     void next();
     void previous();
     void cellClicked(int row, int column);
@@ -143,6 +144,7 @@ private:
     QSettings settings;
     QList<int>  shuffleList;
     int lastPlayed;
+    bool isPlaying;
 };
 
 #endif

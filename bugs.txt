@@ -1,7 +1,9 @@
-- context menu event outside of musicTable causes crash
-- cancel add folder, add url causes crash
-- doesn't remember add folder folder
-- adding some files can cause a crash ("Blessing, Compassion")
 - meta info display mismatch (title duplication, some files receive some other file's meta info instead of their ("reality")) (might be related to previous)
 - quick next-next while playing stops playback
 - bold-italic highlight does not move on normal track switch (when one ends and the next starts)
+
+Fixed:
++ context menu event outside of musicTable causes crash
++ cancel add folder, add url causes crash
++ doesn't remember add folder folder
++ adding some files can cause a crash ("Blessing, Compassion")

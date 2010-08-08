@@ -8,7 +8,7 @@
 //#define AVOID_INPUT_DIALOG 0
 
 MainWindow::MainWindow()
-    : plman (this), settings (tr ("TomAmp"), "TomAmp")
+    : plman (this), settings (tr ("TomAmp"), "TomAmp"), isPlaying (false)
 {
     audioOutput = new Phonon::AudioOutput(Phonon::MusicCategory, this);
     mediaObject = new Phonon::MediaObject(this);
@@ -89,11 +89,15 @@ void MainWindow::addFolder()
             tr("Select Directory To Add"),
             folder);
 
+    if (dir.isEmpty())
+        return;
+
+    settings.setValue("LastFolder", dir);
+
     QStringList filters;
     QStringList files = QDir (dir).entryList(filters, QDir::AllDirs);
     files.removeAll(".");
     files.removeAll("..");
-    qDebug () << files;
     bool recursive = false;
     if (files.size())
         recursive = QMessageBox::question(this, "Add all folders", "Subfolders have been detected, add everything?", QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes;
@@ -108,6 +112,8 @@ void MainWindow::addUrl()
 #else
     QString url = QInputDialog::getText(this, "Get URL", "Please type in the stream URL");
 #endif
+    if (url.isEmpty() || !url.toLower().startsWith("http"))
+        return;
     QStringList toadd;
     toadd << url;
     plman.addStringList(toadd);
@@ -125,7 +131,6 @@ void MainWindow::about()
 
 void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState */)
 {
-    qDebug () << "State: " << newState;
     switch (newState)
     {
         case Phonon::ErrorState:
@@ -148,7 +153,7 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
             playAction->setEnabled(false);
             pauseAction->setEnabled(true);
             stopAction->setEnabled(true);
-            lastPlayed = plman.indexOf(mediaObject->currentSource());
+            //lastPlayed = plman.indexOf(mediaObject->currentSource());
             break;
         case Phonon::StoppedState:
             setWindowTitle("TomAmp");
@@ -166,18 +171,8 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
             pauseAction->setVisible(false);
             playAction->setVisible(true);
             playAction->setEnabled(true);
-            qDebug () << "Queue size: " << mediaObject->queue().size ();
-            if (mediaObject->queue().size ())
-            {
-/*                mediaObject->setCurrentSource(mediaObject->queue()[0]);
-                musicTable->selectRow(plman.indexOf(mediaObject->currentSource()));*/
-                setItem (plman.indexOf(mediaObject->queue()[0]), true);
-//                mediaObject->play();
-            }
-            mediaObject->clearQueue();
             break;
         case Phonon::BufferingState:
-            qDebug () << "Buffering";
             break;
         default:
         ;
@@ -186,24 +181,17 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
 
 void MainWindow::next()
 {
-    bool wasPlaying = (mediaObject->state () == Phonon::PlayingState);
+    bool wasPlaying = isPlaying;
     if (mediaObject->state () == Phonon::ErrorState)
         wasPlaying = true;
-    qDebug () << "NEXT, repeat=" << repeat << ", shuffle=" << shuffle << ", ShuffleLis size=" << shuffleList.size ();
-    if (shuffleList.size() != plman.size())
-        qDebug () << "WHOA STRANGE SHUFFLE: " << shuffleList;
     int index = plman.indexOf(mediaObject->currentSource());
-    qDebug () << "Current index is " << index;
     if (shuffle)
     {
-        qDebug () << "Shuffle next " << index;
         index = shuffleList.indexOf(plman.indexOf(mediaObject->currentSource())) + 1;
         while (index < shuffleList.size () && !plman.getItem(shuffleList[index]).playable)
         {
             index += 1;
-            qDebug () << "Index increase a " << index;
         }
-        qDebug () << "Shuffle next 2 " << index;
         if (index < shuffleList.size ())
         {
             setItem (index, wasPlaying);
@@ -213,46 +201,32 @@ void MainWindow::next()
             index = 0;
             while ((index) < shuffleList.size () && !plman.getItem(shuffleList[index]).playable)
             {
-                qDebug () << "Index increase 2a " << index;
                 index += 1;
             }
             setItem (index, wasPlaying);
         }
-/*        if (index >= shuffleList.size ())
-            wasPlaying = false;*/
-
     }
     else
     {
         index++;
-        qDebug () << "Normal next";
         while ((index) < plman.size () && !plman.getItem(index).playable)
         {
             index += 1;
-            qDebug () << "Index increase " << index;
         }
-        qDebug () << "Normal next 2 " << index;
         if (index < plman.size())
         {
             setItem (index, wasPlaying);
         }
         else if (repeat)
         {
-            qDebug () << "Repeat on";
             index = 0;
             while ((index) < plman.size () && !plman.getItem(index).playable)
             {
                 index += 1;
-                qDebug () << "Index increase " << index;
             }
             setItem (index, wasPlaying);
         }
-/*        if (index >= shuffleList.size ())
-            wasPlaying = false;*/
     }
-/*    if (wasPlaying)
-        mediaObject->play();*/
-    qDebug () << "wasPlaying: " << wasPlaying << ", playbutton visible: " << playAction->isVisible();
 }
 
 void MainWindow::setItem(int i, bool doplay)
@@ -263,44 +237,34 @@ void MainWindow::setItem(int i, bool doplay)
             unhighlightRow(lastPlayed);
         if (shuffle)
         {
-            qDebug () << "SetItem with shuffle, index = " << i << " real index is " << shuffleList[i];
-            qDebug () << "ShuffleList: " << shuffleList;
-            if (doplay)
-                highlightRow(shuffleList[i]);
             mediaObject->setCurrentSource(plman.at (shuffleList[i]));
-//            musicTable->selectRow (shuffleList[i]);
         }
         else
         {
-            qDebug () << "SetItem without shuffle, index = " << i;
-            if (doplay)
-                highlightRow(i);
             mediaObject->setCurrentSource(plman.at(i));
-//            musicTable->selectRow (i);
         }
     }
     if (doplay && mediaObject->currentSource().type() != Phonon::MediaSource::Invalid)
-        mediaObject->play();
+    {
+        play();
+    }
+    else
+        stop ();
 }
 
 void MainWindow::previous()
 {
-    bool wasPlaying = (mediaObject->state () == Phonon::PlayingState);
+    bool wasPlaying = isPlaying;//(mediaObject->state () == Phonon::PlayingState);
     if (mediaObject->state () == Phonon::ErrorState)
         wasPlaying = true;
-    qDebug () << "PREVIOUS, repeat=" << repeat << ", shuffle=" << shuffle;
     int index = plman.indexOf(mediaObject->currentSource());
-    qDebug () << "Current index is " << index;
     if (shuffle)
     {
-        qDebug () << "Shuffle next";
         index = shuffleList.indexOf(plman.indexOf(mediaObject->currentSource())) - 1;
         while (index >= 0 && !plman.getItem(shuffleList[index]).playable)
         {
             index--;
-            qDebug () << "Index increase a " << index;
         }
-        qDebug () << "Shuffle next 2 " << index;
         if (index >= 0)
         {
             setItem (index, wasPlaying);
@@ -310,7 +274,6 @@ void MainWindow::previous()
             index = plman.size () - 1;
             while (index >= 0 && !plman.getItem(shuffleList[index]).playable)
             {
-                qDebug () << "Index increase 2a " << index;
                 index--;
             }
             setItem (index, wasPlaying);
@@ -322,36 +285,24 @@ void MainWindow::previous()
     else
     {
         index--;
-        qDebug () << "Normal next";
         while ((index) >= 0 && !plman.getItem(index).playable)
         {
             index--;
-            qDebug () << "Index increase " << index;
         }
-        qDebug () << "Normal next 2 " << index;
         if (index >= 0)
         {
             setItem (index, wasPlaying);
         }
         else if (repeat)
         {
-            qDebug () << "Repeat on";
             index = plman.size() - 1;
             while ((index) >= 0 && !plman.getItem(index).playable)
             {
                 index--;
-                qDebug () << "Index increase " << index;
             }
             setItem (index, wasPlaying);
         }
-/*        if (index < 0)
-            wasPlaying = false;*/
     }
-/*    if (wasPlaying)
-        mediaObject->play();*/
-    qDebug () << "wasPlaying: " << wasPlaying << ", playbutton visible: " << playAction->isVisible();
-
-
 }
 
 void MainWindow::highlightRow (int i)
@@ -434,14 +385,17 @@ void MainWindow::tableClicked(int row, int /* column */)
 
 void MainWindow::sourceChanged(const Phonon::MediaSource &source)
 {
-    musicTable->selectRow(plman.indexOf(source));
+    int ind = plman.indexOf(source);
+    highlightRow(ind);
+    unhighlightRow(lastPlayed);
+    lastPlayed = ind;
+    musicTable->selectRow(ind);
     timeLcd->display("00:00");
 }
 
 
 void MainWindow::aboutToFinish()
 {
-    qDebug () << "Abouttotfinish";
     int index = plman.indexOf(mediaObject->currentSource()) + 1;
     if (shuffle)
     {
@@ -461,19 +415,16 @@ void MainWindow::aboutToFinish()
         if (plman.size() > index)
         {
             mediaObject->enqueue(plman.at(index));
-            qDebug () << "Enqueue " << index << " pfm " << mediaObject->prefinishMark();
         }
         else if (repeat)
         {
             mediaObject->enqueue(plman.at(0));
-            qDebug () << "Enqueue " << 0 << " pfm " << mediaObject->prefinishMark();
         }
     }
 }
 
 void MainWindow::finished()
 {
-    qDebug () << "Finished";
 }
 
 void MainWindow::setupActions()
@@ -530,9 +481,9 @@ void MainWindow::setupActions()
 /*    removeSelected = new QAction (tr("&Delete from playlist"));
     removeSelected->setShortcut(tr ("Ctrl+D"));*/
 
-    connect(playAction, SIGNAL(triggered()), mediaObject, SLOT(play()));
+    connect(playAction, SIGNAL(triggered()), this, SLOT(play()));
     connect(pauseAction, SIGNAL(triggered()), mediaObject, SLOT(pause()) );
-    connect(stopAction, SIGNAL(triggered()), mediaObject, SLOT(stop()));
+    connect(stopAction, SIGNAL(triggered()), this, SLOT(stop()));
     connect(repeatAction, SIGNAL(triggered()), this, SLOT(repeatToggle()));
     connect(shuffleAction, SIGNAL(triggered()), this, SLOT(shuffleToggle()));
     connect(volumeAction, SIGNAL(triggered()), this, SLOT(volumeToggle()));
@@ -553,7 +504,6 @@ void MainWindow::setupActions()
 
 void MainWindow::removeSelectedItem()
 {
-    qDebug () << "Remove Selected!";
     int row = musicTable->currentRow();
     if (row >= 0)
         plman.removeItem(row);
@@ -561,7 +511,6 @@ void MainWindow::removeSelectedItem()
 
 void MainWindow::removeAllButSelectedItem()
 {
-    qDebug () << "Remove Selected!";
     int row = musicTable->currentRow();
     if (row >= 0)
     {
@@ -576,7 +525,6 @@ void MainWindow::removeAllButSelectedItem()
 void MainWindow::repeatToggle ()
 {
     repeat = !repeat;
-    qDebug() << "Repeat toggled to " << repeat;
     settings.setValue("repeat", QVariant (repeat));
     if (repeat)
         repeatAction->setIcon(QIcon (QPixmap (":images/repeatActive")));
@@ -596,13 +544,21 @@ void MainWindow::shuffleToggle ()
 
 void MainWindow::volumeToggle ()
 {
-    qDebug () << "Volumetoggle: " << volumeAction->isChecked();
     volumeSlider->setVisible(volumeAction->isChecked());
 }
 
 void MainWindow::play()
 {
+    mediaObject->play();
+    lastPlayed = plman.indexOf(mediaObject->currentSource());
+    highlightRow(lastPlayed);
+    isPlaying = true;
+}
 
+void MainWindow::stop()
+{
+    mediaObject->stop();
+    isPlaying = false;
 }
 
 
@@ -712,7 +668,6 @@ void MainWindow::setupUi()
 
     setCentralWidget(widget);
     setWindowTitle("TomAmp");
-    qDebug () << "cucc: " << musicTable->columnWidth(1);
 }
 
 void MainWindow::cellClicked(int /*row*/, int)
@@ -721,7 +676,8 @@ void MainWindow::cellClicked(int /*row*/, int)
 
 void MainWindow::contextMenuEvent (QContextMenuEvent*e)
 {
-    qDebug () << "Context menu event!";
+    if (!childAt (e->pos()))
+        return;
     if (childAt (e->pos())->parentWidget() != musicTable)
         return;
     contextMenu->popup(e->globalPos());
@@ -747,7 +703,6 @@ void MainWindow::setupShuffleList()
         shuffleList.append(tmp[ind]);
         tmp.removeAt(ind);
     }
-    qDebug () << shuffleList;
 }
 
 void MainWindow::savePlaylist ()
