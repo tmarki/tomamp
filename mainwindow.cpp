@@ -32,7 +32,7 @@ MainWindow::MainWindow()
     setupActions();
     setupMenus();
     setupUi();
-    timeLcd->display("00:00");
+    timeLcd->display("00:00:00");
     plman.addStringList(settings.value("lastPlaylist").toStringList());
     setupShuffleList();
     int curind = settings.value("currentIndex", -1).toInt ();
@@ -162,7 +162,7 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
             pauseAction->setVisible(false);
             playAction->setVisible(true);
             pauseAction->setEnabled(false);
-            timeLcd->display("00:00");
+            timeLcd->display("00:00:00");
             unhighlightRow(plman.indexOf(mediaObject->currentSource()));
             break;
         case Phonon::PausedState:
@@ -338,9 +338,9 @@ void MainWindow::unhighlightRow (int i)
 
 void MainWindow::tick(qint64 time)
 {
-    QTime displayTime(0, (time / 60000) % 60, (time / 1000) % 60);
+    QTime displayTime((time / 3600000), (time / 60000) % 60, (time / 1000) % 60);
 
-    timeLcd->display(displayTime.toString("mm:ss"));
+    timeLcd->display(displayTime.toString("HH:mm:ss"));
 }
 
 void MainWindow::tableClicked(int row, int /* column */)
@@ -390,7 +390,7 @@ void MainWindow::sourceChanged(const Phonon::MediaSource &source)
     unhighlightRow(lastPlayed);
     lastPlayed = ind;
     musicTable->selectRow(ind);
-    timeLcd->display("00:00");
+    timeLcd->display("00:00:00");
 }
 
 
@@ -429,35 +429,35 @@ void MainWindow::finished()
 
 void MainWindow::setupActions()
 {
-    playAction = new QAction(QIcon (QPixmap (":images/play")), tr("Play"), this);
+    playAction = new QAction(QIcon (QPixmap (":images/play")), "", this);
     playAction->setShortcut(tr("Crl+P"));
     playAction->setDisabled(true);
-    pauseAction = new QAction(QIcon (QPixmap (":images/pause")), tr("Pause"), this);
+    pauseAction = new QAction(QIcon (QPixmap (":images/pause")), "", this);
     pauseAction->setShortcut(tr("Ctrl+A"));
     pauseAction->setDisabled(true);
     pauseAction->setVisible(false);
-    stopAction = new QAction(QIcon (QPixmap (":images/stop")), tr("Stop"), this);
+    stopAction = new QAction(QIcon (QPixmap (":images/stop")), "", this);
     stopAction->setShortcut(tr("Ctrl+S"));
     stopAction->setDisabled(true);
-    nextAction = new QAction(QIcon (QPixmap (":images/next")), tr("Next"), this);
+    nextAction = new QAction(QIcon (QPixmap (":images/next")), "", this);
     nextAction->setShortcut(tr("Ctrl+N"));
-    previousAction = new QAction(QIcon (QPixmap (":images/previous")), tr("Previous"), this);
+    previousAction = new QAction(QIcon (QPixmap (":images/previous")), "", this);
     previousAction->setShortcut(tr("Ctrl+R"));
     if (repeat)
-        repeatAction = new QAction(QIcon (QPixmap (":images/repeatActive")), tr("Repeat"), this);
+        repeatAction = new QAction(QIcon (QPixmap (":images/repeatActive")), "", this);
     else
-        repeatAction = new QAction(QIcon (QPixmap (":images/repeat")), tr("Repeat"), this);
+        repeatAction = new QAction(QIcon (QPixmap (":images/repeat")), "", this);
     repeatAction->setCheckable(true);
     repeatAction->setChecked(repeat);
     repeatAction->setShortcut(tr("Ctrl+I"));
     if (shuffle)
-        shuffleAction = new QAction(QIcon (QPixmap (":images/shuffleActive")), tr("Shuffle"), this);
+        shuffleAction = new QAction(QIcon (QPixmap (":images/shuffleActive")), "", this);
     else
-        shuffleAction = new QAction(QIcon (QPixmap (":images/shuffle")), tr("Shuffle"), this);
+        shuffleAction = new QAction(QIcon (QPixmap (":images/shuffle")), "", this);
     shuffleAction->setCheckable(true);
     shuffleAction->setChecked(shuffle);
     shuffleAction->setShortcut(tr("Ctrl+H"));
-    volumeAction = new QAction(QIcon (QPixmap (":images/volume")), tr("Volume"), this);
+    volumeAction = new QAction(QIcon (QPixmap (":images/volume")), "", this);
     volumeAction->setCheckable(true);
     volumeAction->setShortcut(tr("Ctrl+V"));
     addFilesAction = new QAction(tr("Add &File"), this);
