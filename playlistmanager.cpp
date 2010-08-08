@@ -58,7 +58,8 @@ void PlaylistManager::parseAndAddFolder(const QString &dir, bool recursive)
             items.append(PlaylistItem (PlaylistItem (fname)));
         }
     }
-    if (!items.isEmpty())
+//    if (!items.isEmpty())
+    if (items.size () > index)
     {
         metaInformationResolver->setCurrentSource(items.at(index).source);
         lastMetaRead = index;
@@ -78,7 +79,8 @@ void PlaylistManager::addStringList(const QStringList& list)
             items.append(PlaylistItem (string));
         }
     }
-    if (!items.isEmpty())
+//    if (!items.isEmpty())
+    if (items.size () > index)
     {
         metaInformationResolver->setCurrentSource(items.at(index).source);
         lastMetaRead = index;
@@ -200,7 +202,8 @@ void PlaylistManager::addPlaylist(const QString& filename)
         appendPlaylist(filename);
     else if (filename.right(4).toLower() == ".pls")
         appendPlaylistPLS(filename);
-    if (!items.isEmpty())
+    if (items.size () > index)
+//    if (!items.isEmpty())
     {
         metaInformationResolver->setCurrentSource(items.at(index).source);
         lastMetaRead = index;

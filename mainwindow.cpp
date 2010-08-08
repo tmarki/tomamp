@@ -504,6 +504,8 @@ void MainWindow::setupActions()
 
 void MainWindow::removeSelectedItem()
 {
+    if (QMessageBox::question(this, "Confirm remove", "Are you sure you want to remove this item?", QMessageBox::Yes, QMessageBox::No) == QMessageBox::No)
+        return;
     int row = musicTable->currentRow();
     if (row >= 0)
         plman.removeItem(row);
@@ -511,6 +513,8 @@ void MainWindow::removeSelectedItem()
 
 void MainWindow::removeAllButSelectedItem()
 {
+    if (QMessageBox::question(this, "Confirm remove", "Are you sure you want to remove all other items?", QMessageBox::Yes, QMessageBox::No) == QMessageBox::No)
+        return;
     int row = musicTable->currentRow();
     if (row >= 0)
     {
