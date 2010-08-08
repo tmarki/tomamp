@@ -5,6 +5,8 @@
 #include <phonon/mediaobject.h>
 #include <phonon/backendcapabilities.h>
 
+
+
 struct PlaylistItem
 {
     Phonon::MediaSource source;
@@ -50,6 +52,7 @@ private:
     Phonon::MediaObject *metaInformationResolver;
     QList<PlaylistItem> items;
     QWidget* parentWidget;
+    int lastMetaRead;
 };
 
 #endif // PLAYLISTMANAGER_H
