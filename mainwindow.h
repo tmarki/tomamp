@@ -98,6 +98,7 @@ private slots:
     void removeAllButSelectedItem ();
     void highlightRow (int i);
     void unhighlightRow (int i);
+    void buttonUp ();
 
 protected:
     void contextMenuEvent (QContextMenuEvent*e);

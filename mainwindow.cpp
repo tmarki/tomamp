@@ -619,9 +619,9 @@ void MainWindow::setupUi()
     timeLcd = new QLCDNumber;
 
     QStringList headers;
-    headers << tr("Artist") << tr("Title") << tr("Album");
+    headers << tr("Artist") << tr("Title") << tr("Album") << "Controls";
 
-    musicTable = new QTableWidget(0, 3);
+    musicTable = new QTableWidget(0, 4);
     musicTable->setHorizontalHeaderLabels(headers);
     musicTable->setSelectionMode(QAbstractItemView::SingleSelection);
     musicTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -740,10 +740,10 @@ void MainWindow::playlistChanged(int from)
         musicTable->insertRow(currentRow);
         setRowFromItem (currentRow, plman.getItem(i));
     }
-    if (plman.indexOf(mediaObject->currentSource()) < 0)
+/*    if (plman.indexOf(mediaObject->currentSource()) < 0)
     {
         setItem (firstGood, false);
-    }
+    }*/
     setupShuffleList();
 }
 
@@ -769,6 +769,25 @@ void MainWindow::setRowFromItem (int row, const PlaylistItem& item)
         item3->setFlags(item3->flags() ^ Qt::ItemIsEditable);
         musicTable->setItem(row, 2, item3);
     }
+    qDebug () << "Widget: " << musicTable->cellWidget(row, 3);
+
+    if (!musicTable->cellWidget(row, 3))
+    {
+        QToolBar* bar = new QToolBar;
+        QPushButton* up = new QPushButton;
+        up->setText("up");
+        up->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+        bar->setProperty("row", row);
+        bar->addWidget(up);
+        musicTable->setCellWidget(row, 3, bar);
+        connect (up, SIGNAL (clicked ()),  this, SLOT (buttonUp ()));
+    }
+}
+
+void MainWindow::buttonUp()
+{
+    qDebug () << "Presses up on " << sender()->parent()->property("row");
+    plman.moveItemUp(sender()->parent()->property("row").toInt());
 }
 
 void MainWindow::itemUpdated(int index)

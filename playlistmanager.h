@@ -39,6 +39,7 @@ public slots:
     void loadPlaylist(const QString& filename);
     void clearPlaylist();
     void addPlaylist (const QString& filename);
+    void moveItemUp (int i);
 signals:
     void playlistChanged (int from);
     void itemUpdated (int index);
