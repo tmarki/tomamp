@@ -35,6 +35,7 @@ public:
     const Phonon::MediaSource& at (int i) { return items[i].source; }
     const PlaylistItem& getItem (int i) const { return items[i]; }
     bool moveItemUp (int i);
+    bool moveItemDown (int i);
 public slots:
     void savePlaylist(const QString& filename);
     void loadPlaylist(const QString& filename);
@@ -42,6 +43,7 @@ public slots:
     void addPlaylist (const QString& filename);
 signals:
     void playlistChanged (int from);
+    void itemRemoved (int i);
     void itemUpdated (int index);
 private slots:
     void metaStateChanged(Phonon::State newState, Phonon::State oldState);

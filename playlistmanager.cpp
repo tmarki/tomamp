@@ -306,8 +306,9 @@ QStringList PlaylistManager::playlistStrings() const
 void PlaylistManager::removeItem(int i)
 {
     items.removeAt (i);
-    emit playlistChanged(i);
+    emit itemRemoved(i);
 }
+
 
 bool PlaylistManager::fileSupported (const QString& fname) const
 {
@@ -327,6 +328,19 @@ bool PlaylistManager::moveItemUp (int i)
     {
         PlaylistItem tmp = items[i - 1];
         items[i - 1] = items[i];
+        items[i] = tmp;
+        return true;
+//        emit playlistChanged(i - 1);
+    }
+    return false;
+}
+
+bool PlaylistManager::moveItemDown (int i)
+{
+    if (i < items.size () - 1)
+    {
+        PlaylistItem tmp = items[i + 1];
+        items[i + 1] = items[i];
         items[i] = tmp;
         return true;
 //        emit playlistChanged(i - 1);

@@ -22,6 +22,7 @@ MainWindow::MainWindow()
     connect(mediaObject, SIGNAL(aboutToFinish()), this, SLOT(aboutToFinish()));
     connect (&plman, SIGNAL (playlistChanged (int)), this, SLOT (playlistChanged(int)));
     connect (&plman, SIGNAL (itemUpdated(int)), this, SLOT (itemUpdated (int)));
+    connect (&plman, SIGNAL (itemRemoved(int)), this, SLOT (itemRemoved (int)));
 
     Phonon::createPath(mediaObject, audioOutput);
 
@@ -32,6 +33,7 @@ MainWindow::MainWindow()
     setupActions();
     setupMenus();
     setupUi();
+    show ();
     timeLcd->display("00:00:00");
     plman.addStringList(settings.value("lastPlaylist").toStringList());
     setupShuffleList();
@@ -769,18 +771,29 @@ void MainWindow::setRowFromItem (int row, const PlaylistItem& item)
         item3->setFlags(item3->flags() ^ Qt::ItemIsEditable);
         musicTable->setItem(row, 2, item3);
     }
-    qDebug () << "Widget: " << musicTable->cellWidget(row, 3);
 
     if (!musicTable->cellWidget(row, 3))
     {
         QToolBar* bar = new QToolBar;
-        QPushButton* up = new QPushButton;
-        up->setText("up");
+        QLabel* up = new QLabel;
+        up->setText(QString::fromUtf8("<b><a href='up'>▲</a></b>"));
+        up->setStyleSheet("padding-right:3px;");
         up->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-        bar->setProperty("row", row);
         bar->addWidget(up);
+        QLabel* down = new QLabel;
+        down->setText(QString::fromUtf8("<b><a href='down'>▼</a></b>"));
+        down->setStyleSheet("padding-right:3px;");
+        bar->addWidget(down);
+        QLabel* del = new QLabel;
+        del->setText(QString::fromUtf8("<b><a href='del'>╳</a></b>"));
+        del->setStyleSheet("padding-right:3px;");
+        bar->addWidget(del);
+        down->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+        bar->setProperty("row", row);
         musicTable->setCellWidget(row, 3, bar);
-        connect (up, SIGNAL (clicked ()),  this, SLOT (buttonUp ()));
+        connect (up, SIGNAL (linkActivated (const QString&)),  this, SLOT (buttonUp ()));
+        connect (down, SIGNAL (linkActivated (const QString&)),  this, SLOT (buttonDown ()));
+        connect (del, SIGNAL (linkActivated (const QString&)),  this, SLOT (buttonDel ()));
     }
 }
 
@@ -799,6 +812,31 @@ void MainWindow::buttonUp()
     }
 }
 
+void MainWindow::buttonDown()
+{
+    int i = sender()->parent()->property("row").toInt();
+    qDebug () << "Presses down on " << i;
+    if (i < plman.size() - 1)
+    {
+        plman.moveItemDown(i);
+        setRowFromItem (i, plman.getItem(i));
+        setRowFromItem (i + 1, plman.getItem(i + 1));
+        musicTable->cellWidget(i, 3)->setProperty("row", i);
+        musicTable->cellWidget(i + 1, 3)->setProperty("row", i + 1);
+        musicTable->selectRow(i + 1);
+    }
+}
+
+void MainWindow::buttonDel()
+{
+    int i = sender()->parent()->property("row").toInt();
+    qDebug () << "Presses del on " << i;
+    if (i < plman.size())
+    {
+        plman.removeItem(i);
+    }
+}
+
 void MainWindow::itemUpdated(int index)
 {
     if (plman.indexOf(mediaObject->currentSource()) < 0 && plman.getItem (index).playable)
@@ -810,5 +848,15 @@ void MainWindow::itemUpdated(int index)
     {
         if (shuffle) index = shuffleList.indexOf(index);
         setItem (index, false);
+    }
+}
+
+void MainWindow::itemRemoved (int i)
+{
+    musicTable->removeRow(i);
+    for (int j = i ? (i - 1) : 0; j < musicTable->rowCount(); ++j)
+    {
+        if (musicTable->cellWidget(j, 3))
+            musicTable->cellWidget(j, 3)->setProperty("row", j);
     }
 }
