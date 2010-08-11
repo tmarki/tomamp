@@ -321,13 +321,15 @@ bool PlaylistManager::fileSupported (const QString& fname) const
     return false;
 }
 
-void PlaylistManager::moveItemUp (int i)
+bool PlaylistManager::moveItemUp (int i)
 {
     if (i)
     {
         PlaylistItem tmp = items[i - 1];
         items[i - 1] = items[i];
         items[i] = tmp;
-        emit playlistChanged(i - 1);
+        return true;
+//        emit playlistChanged(i - 1);
     }
+    return false;
 }

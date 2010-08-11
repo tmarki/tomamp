@@ -786,8 +786,17 @@ void MainWindow::setRowFromItem (int row, const PlaylistItem& item)
 
 void MainWindow::buttonUp()
 {
-    qDebug () << "Presses up on " << sender()->parent()->property("row");
-    plman.moveItemUp(sender()->parent()->property("row").toInt());
+    int i = sender()->parent()->property("row").toInt();
+    qDebug () << "Presses up on " << i;
+    if (i)
+    {
+        plman.moveItemUp(i);
+        setRowFromItem (i, plman.getItem(i));
+        setRowFromItem (i - 1, plman.getItem(i - 1));
+        musicTable->cellWidget(i, 3)->setProperty("row", i);
+        musicTable->cellWidget(i - 1, 3)->setProperty("row", i - 1);
+        musicTable->selectRow(i - 1);
+    }
 }
 
 void MainWindow::itemUpdated(int index)

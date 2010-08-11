@@ -34,12 +34,12 @@ public:
     int indexOf (const Phonon::MediaSource& s) const;
     const Phonon::MediaSource& at (int i) { return items[i].source; }
     const PlaylistItem& getItem (int i) const { return items[i]; }
+    bool moveItemUp (int i);
 public slots:
     void savePlaylist(const QString& filename);
     void loadPlaylist(const QString& filename);
     void clearPlaylist();
     void addPlaylist (const QString& filename);
-    void moveItemUp (int i);
 signals:
     void playlistChanged (int from);
     void itemUpdated (int index);
