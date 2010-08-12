@@ -1,6 +1,7 @@
 - remember folder position when adding songs (takes time as adding a song and going one folder up for next song jumps to top of folder)
 - when saving a playlist, the default path seems invalid, so playlist doesn's save, and no error given
 - for some reasom, one folder shows 0 files, but filled with mp3 files (?)
+- quit while reading tags causes crash
 
 Fixed:
 + context menu event outside of musicTable causes crash

@@ -10,6 +10,9 @@
 MainWindow::MainWindow()
     : plman (this), settings (tr ("TomAmp"), "TomAmp"), isPlaying (false)
 {
+#ifdef Q_WS_MAEMO_5
+    setAttribute(Qt::WA_Maemo5AutoOrientation, true);
+#endif
     audioOutput = new Phonon::AudioOutput(Phonon::MusicCategory, this);
     mediaObject = new Phonon::MediaObject(this);
 

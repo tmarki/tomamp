@@ -12,10 +12,12 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    playlistmanager.cpp
+    playlistmanager.cpp \
+    optiondialog.cpp
 
 HEADERS  += mainwindow.h \
-    playlistmanager.h
+    playlistmanager.h \
+    optiondialog.h
 
 FORMS    +=
 
