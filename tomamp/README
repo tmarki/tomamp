@@ -1,0 +1,7 @@
+TomAmp v0.1
+(c) 2010 Tamas Marki <tmarki@gmail.com>
+
+TomAmp is a simple playlist-based audio player written in Qt, designed for Maemo.
+
+
+The project is released under the LGPL license. See http://www.gnu.org/licenses/lgpl.html

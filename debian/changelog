@@ -1,0 +1,20 @@
+tomamp (0.1-maemo2) unstable; urgency=low
+
+  * Package fix again :(
+  
+
+ -- Tamas Marki <tmarki@gmail.com>  Tue, 10 Aug 2010 11:59:07 +0200
+
+tomamp (0.1-maemo1) unstable; urgency=low
+
+  * Package fix (hopefully)
+  
+
+ -- Tamas Marki <tmarki@gmail.com>  Mon, 09 Aug 2010 21:34:07 +0200
+tomamp (0.1-maemo0) unstable; urgency=low
+
+  * Initial release
+  
+
+ -- Tamas Marki <tmarki@gmail.com>  Mon, 09 Aug 2010 21:34:07 +0200
+
