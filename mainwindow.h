@@ -102,6 +102,7 @@ private slots:
     void buttonDown ();
     void buttonDel ();
     void itemRemoved (int i);
+    void showOptions ();
 
 protected:
     void contextMenuEvent (QContextMenuEvent*e);
@@ -139,6 +140,7 @@ private:
     QAction *aboutQtAction;
     QAction *removeSelected;
     QAction *removeAllButSelected;
+    QAction *optionAction;
     QMenu   *contextMenu;
     QToolBar *bar;
     QLCDNumber *timeLcd;

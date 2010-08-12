@@ -1,6 +1,6 @@
 #include "optiondialog.h"
 
-OptionDialog::OptionDialog(QWidget *parent) :
-    QDialog(parent)
+OptionDialog::OptionDialog(QWidget *parent, QSettings& set) :
+    QDialog(parent), settings (set)
 {
 }

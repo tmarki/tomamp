@@ -3,6 +3,7 @@
 #include <QInputDialog>
 
 #include "mainwindow.h"
+#include "optiondialog.h"
 #include "time.h"
 
 //#define AVOID_INPUT_DIALOG 0
@@ -152,7 +153,7 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
             next ();
             break;
         case Phonon::PlayingState:
-            setWindowTitle(mediaObject->metaData().value("TITLE") + " - TomAmp");
+            setWindowTitle(mediaObject->metaData().value("TITLE") + "(" + mediaObject->metaData().value("ARTIST") + ") - TomAmp");
             pauseAction->setVisible(true);
             playAction->setVisible (false);
             playAction->setEnabled(false);
@@ -477,6 +478,8 @@ void MainWindow::setupActions()
     loadPlaylistAction->setShortcut(tr("Ctrl+L"));
     clearPlaylistAction = new QAction (tr("&Clear Playlist"), this);
     clearPlaylistAction->setShortcut(tr("Ctrl+C"));
+    optionAction = new QAction (tr("Op&tions"), this);
+    optionAction->setShortcut(tr("Ctrl+T"));
     exitAction = new QAction(tr("E&xit"), this);
     exitAction->setShortcut(tr("Ctrl+X"));
     aboutAction = new QAction(tr("A&bout"), this);
@@ -499,6 +502,7 @@ void MainWindow::setupActions()
     connect (savePlaylistAction, SIGNAL (triggered()), this, SLOT (savePlaylist()));
     connect (loadPlaylistAction, SIGNAL (triggered()), this, SLOT (loadPlaylist()));
     connect (clearPlaylistAction, SIGNAL (triggered()), &plman, SLOT (clearPlaylist()));
+    connect (optionAction, SIGNAL (triggered()), &plman, SLOT (showOptions()));
     connect (nextAction, SIGNAL(triggered()), this, SLOT(next()));
     connect (previousAction, SIGNAL(triggered()), this, SLOT(previous()));
     connect(exitAction, SIGNAL(triggered()), this, SLOT(close()));
@@ -581,6 +585,7 @@ void MainWindow::setupMenus()
     fileMenu->addAction(savePlaylistAction);
     fileMenu->addAction(loadPlaylistAction);
     fileMenu->addAction(clearPlaylistAction);
+    fileMenu->addAction(optionAction);
 //    fileMenu->addAction(exitAction);
 
     QMenu *aboutMenu = menuBar()->addMenu(tr("&Help"));
@@ -862,4 +867,10 @@ void MainWindow::itemRemoved (int i)
         if (musicTable->cellWidget(j, 3))
             musicTable->cellWidget(j, 3)->setProperty("row", j);
     }
+}
+
+void MainWindow::showOptions ()
+{
+    OptionDialog dlg (this, settings);
+    dlg.show();
 }
