@@ -98,11 +98,10 @@ private slots:
     void removeAllButSelectedItem ();
     void highlightRow (int i);
     void unhighlightRow (int i);
-    void buttonUp ();
-    void buttonDown ();
-    void buttonDel ();
+
     void itemRemoved (int i);
     void showOptions ();
+    void playlistControl (const QString&);
 
 protected:
     void contextMenuEvent (QContextMenuEvent*e);
@@ -112,6 +111,9 @@ private:
     void setupUi();
     void setupShuffleList();
     void setRowFromItem (int row, const PlaylistItem& item);
+    void buttonUp (int i);
+    void buttonDown (int i);
+    void buttonDel (int i);
 
     Phonon::SeekSlider *seekSlider;
     Phonon::MediaObject *mediaObject;
