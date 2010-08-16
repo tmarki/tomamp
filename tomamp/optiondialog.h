@@ -14,6 +14,7 @@ signals:
 
 public slots:
 private:
+    void    setupUi ();
     QSettings& settings;
 };
 

@@ -872,6 +872,7 @@ void MainWindow::itemRemoved (int i)
 
 void MainWindow::showOptions ()
 {
+    qDebug () << "Options dialog";
     OptionDialog dlg (this, settings);
-    dlg.show();
+    dlg.exec();
 }
