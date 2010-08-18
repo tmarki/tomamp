@@ -16,6 +16,9 @@ struct PlaylistItem
     QString title;
     QString artist;
     QString album;
+/*    QString year;
+    QString genre;
+    QString length;*/
     PlaylistItem (const QString& uri) : source (Phonon::MediaSource (uri)), uri (uri), playable (false), localFile (false) {  }
     bool operator ==(const Phonon::MediaSource& s) const { return source == s; }
 };

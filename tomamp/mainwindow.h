@@ -102,6 +102,9 @@ private slots:
     void itemRemoved (int i);
     void showOptions ();
     void playlistControl (const QString&);
+    void upSelected();
+    void downSelected();
+    void enqueueSelected();
 
 protected:
     void contextMenuEvent (QContextMenuEvent*e);
@@ -114,6 +117,7 @@ private:
     void buttonUp (int i);
     void buttonDown (int i);
     void buttonDel (int i);
+    void setOrientation ();
 
     Phonon::SeekSlider *seekSlider;
     Phonon::MediaObject *mediaObject;
@@ -131,6 +135,9 @@ private:
     QAction *volumeAddedAction;
     QAction *nextAction;
     QAction *previousAction;
+    QAction *upAction;
+    QAction *downAction;
+    QAction *delAction;
     QAction *addFilesAction;
     QAction *addFoldersAction;
     QAction *addUrlAction;
@@ -142,11 +149,13 @@ private:
     QAction *aboutQtAction;
     QAction *removeSelected;
     QAction *removeAllButSelected;
+    QAction *enqueueAction;
     QAction *optionAction;
     QMenu   *contextMenu;
     QToolBar *bar;
     QLCDNumber *timeLcd;
     QTableWidget *musicTable;
+    QStringList headers;
     bool        repeat;
     bool        shuffle;
     QSettings settings;
