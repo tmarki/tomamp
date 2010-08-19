@@ -116,7 +116,7 @@ void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State old
     QMap<QString, QString> metaData = metaInformationResolver->metaData();
 
 
-    if (index >= 0 && newState != Phonon::ErrorState)
+    if (index >= 0 && newState != Phonon::ErrorState && index < items.size ())
     {
         items[index].artist = metaData.value("ARTIST");
         items[index].title = metaData.value("TITLE");

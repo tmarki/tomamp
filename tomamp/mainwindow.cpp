@@ -205,6 +205,11 @@ void MainWindow::next()
     bool wasPlaying = isPlaying;
     if (mediaObject->state () == Phonon::ErrorState)
         wasPlaying = true;
+    if (mediaObject->queue().size())
+    {
+        setItem (plman.indexOf(mediaObject->queue()[0]), wasPlaying);
+        return;
+    }
     int index = plman.indexOf(mediaObject->currentSource());
     if (shuffle)
     {
