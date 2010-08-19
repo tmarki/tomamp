@@ -6,6 +6,8 @@
 
 QT       += core gui phonon
 
+maemo5 { QT += maemo5 }
+
 TARGET = tomamp
 TEMPLATE = app
 

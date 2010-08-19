@@ -4,17 +4,29 @@
 #include <QDialog>
 #include <QSettings>
 
+class QComboBox;
+class QVBoxLayout;
+
 class OptionDialog : public QDialog
 {
     Q_OBJECT
 public:
     explicit OptionDialog(QWidget *parent, QSettings& set);
+    ~OptionDialog ();
 
 signals:
 
 public slots:
+private slots:
+    void orderControl (QString);
 private:
+    void upColumn (int i);
+    void downColumn (int i);
+    void    setupUi ();
     QSettings& settings;
+    QComboBox* orient;
+    QStringList availableHeaders;
+    QVBoxLayout *headerLayout;
 };
 
 #endif // OPTIONDIALOG_H

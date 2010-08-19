@@ -1,7 +1,9 @@
 #include <QtGui>
 #include <QtDebug>
 #include <QInputDialog>
-
+#ifdef Q_WS_MAEMO_5
+#include <QtMaemo5/QMaemo5InformationBox>
+#endif
 #include "mainwindow.h"
 #include "optiondialog.h"
 #include "time.h"
@@ -11,9 +13,7 @@
 MainWindow::MainWindow()
     : plman (this), settings (tr ("TomAmp"), "TomAmp"), isPlaying (false)
 {
-#ifdef Q_WS_MAEMO_5
-    setAttribute(Qt::WA_Maemo5AutoOrientation, true);
-#endif
+    setOrientation();
     audioOutput = new Phonon::AudioOutput(Phonon::MusicCategory, this);
     mediaObject = new Phonon::MediaObject(this);
 
@@ -33,6 +33,7 @@ MainWindow::MainWindow()
     qsrand (time (NULL));
     repeat = settings.value("repeat", false).toBool();
     shuffle = settings.value("shuffle", false).toBool();
+    headers = settings.value ("headers", QStringList()).toStringList();
     setupShuffleList();
     setupActions();
     setupMenus();
@@ -55,11 +56,25 @@ MainWindow::~MainWindow()
     settings.setValue("lastPlaylist", plman.playlistStrings());
     settings.setValue("volume", audioOutput->volume());
     settings.setValue("currentIndex", plman.indexOf(mediaObject->currentSource()));
+    settings.setValue("headers", headers);
     for (int i = 0; i < musicTable->columnCount(); ++i)
     {
         QString lab = QString ("colWidth_%1").arg (i);
         settings.setValue(lab, musicTable->columnWidth(i));
     }
+}
+
+void MainWindow::setOrientation ()
+{
+#ifdef Q_WS_MAEMO_5
+    QString orient = settings.value("orientation", "Automatic").toString();
+    if (orient == "Portrait")
+        setAttribute(Qt::WA_Maemo5PortraitOrientation, true);
+    else if (orient == "Landscape")
+        setAttribute(Qt::WA_Maemo5LandscapeOrientation, true);
+    else
+        setAttribute(Qt::WA_Maemo5AutoOrientation, true);
+#endif
 }
 
 void MainWindow::addFiles()
@@ -191,6 +206,11 @@ void MainWindow::next()
     bool wasPlaying = isPlaying;
     if (mediaObject->state () == Phonon::ErrorState)
         wasPlaying = true;
+    if (mediaObject->queue().size())
+    {
+        setItem (plman.indexOf(mediaObject->queue()[0]), wasPlaying);
+        return;
+    }
     int index = plman.indexOf(mediaObject->currentSource());
     if (shuffle)
     {
@@ -403,6 +423,8 @@ void MainWindow::sourceChanged(const Phonon::MediaSource &source)
 
 void MainWindow::aboutToFinish()
 {
+    if (mediaObject->queue().size())
+        return;
     int index = plman.indexOf(mediaObject->currentSource()) + 1;
     if (shuffle)
     {
@@ -448,6 +470,9 @@ void MainWindow::setupActions()
     stopAction->setDisabled(true);
     nextAction = new QAction(QIcon (QPixmap (":images/next")), "", this);
     nextAction->setShortcut(tr("Ctrl+N"));
+    upAction = new QAction (QString::fromUtf8("▲"), this);
+    downAction = new QAction (QString::fromUtf8("▼"), this);
+    delAction = new QAction (QString::fromUtf8("╳"), this);
     previousAction = new QAction(QIcon (QPixmap (":images/previous")), "", this);
     previousAction->setShortcut(tr("Ctrl+R"));
     if (repeat)
@@ -503,9 +528,12 @@ void MainWindow::setupActions()
     connect (savePlaylistAction, SIGNAL (triggered()), this, SLOT (savePlaylist()));
     connect (loadPlaylistAction, SIGNAL (triggered()), this, SLOT (loadPlaylist()));
     connect (clearPlaylistAction, SIGNAL (triggered()), &plman, SLOT (clearPlaylist()));
-    connect (optionAction, SIGNAL (triggered()), &plman, SLOT (showOptions()));
+    connect (optionAction, SIGNAL (triggered()), this, SLOT (showOptions()));
     connect (nextAction, SIGNAL(triggered()), this, SLOT(next()));
     connect (previousAction, SIGNAL(triggered()), this, SLOT(previous()));
+    connect (upAction, SIGNAL(triggered()), this, SLOT(upSelected()));
+    connect (downAction, SIGNAL(triggered()), this, SLOT(downSelected()));
+    connect (delAction, SIGNAL(triggered()), this, SLOT(removeSelectedItem()));
     connect(exitAction, SIGNAL(triggered()), this, SLOT(close()));
     connect(aboutAction, SIGNAL(triggered()), this, SLOT(about()));
     connect(aboutQtAction, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
@@ -619,20 +647,28 @@ void MainWindow::setupUi()
     bar->addAction(shuffleAction);
     bar->addAction(nextAction);
     bar->addAction(previousAction);
+    bar->addAction(upAction);
+    bar->addAction(downAction);
+    bar->addAction(delAction);
 
     contextMenu = new QMenu (this);
+    enqueueAction = contextMenu->addAction(tr ("Enqueue"));
     removeSelected = contextMenu->addAction(tr ("Remove selected"));
     removeAllButSelected = contextMenu->addAction(tr("Remove all but selected"));
     connect (removeSelected, SIGNAL (triggered()), this, SLOT (removeSelectedItem()));
     connect (removeAllButSelected, SIGNAL (triggered()), this, SLOT (removeAllButSelectedItem()));
+    connect (enqueueAction, SIGNAL (triggered()), this, SLOT (enqueueSelected()));
 
 
     timeLcd = new QLCDNumber;
 
-    QStringList headers;
-    headers << tr("Artist") << tr("Title") << tr("Album") << "Controls";
+    if (!headers.size ())
+    {
+        headers << "Artist" << "Title" << "Album";
+        settings.setValue("headers", headers);
+    }
 
-    musicTable = new QTableWidget(0, 4);
+    musicTable = new QTableWidget(0, headers.size ());
     musicTable->setHorizontalHeaderLabels(headers);
     musicTable->setSelectionMode(QAbstractItemView::SingleSelection);
     musicTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -640,20 +676,12 @@ void MainWindow::setupUi()
         this, SLOT(tableClicked(int,int)));
     connect(musicTable, SIGNAL(cellClicked(int,int)),
         this, SLOT(cellClicked(int,int)));
-/*    for (int i = 0; i < 3; ++i)
-    {
-        if (!musicTable->horizontalHeaderItem(i))
-            continue;
-        musicTable->horizontalHeaderItem(i)->setBackgroundColor(QColor (128, 128, 255));;
-        musicTable->horizontalHeaderItem(i)->setForeground(QColor (255, 255, 255));
-    }*/
     for (int i = 0; i < musicTable->columnCount(); ++i)
     {
         QString lab = QString ("colWidth_%1").arg (i);
         int val = settings.value(lab, 0).toInt();
         if (val)
             musicTable->setColumnWidth(i, val);
-//        settings.setValue(lab, musicTable->columnWidth(i));
     }
 
 
@@ -687,6 +715,21 @@ void MainWindow::setupUi()
 
 void MainWindow::cellClicked(int /*row*/, int)
 {
+}
+
+void MainWindow::enqueueSelected()
+{
+    int sel = musicTable->currentRow();
+    if (sel >= 0)
+    {
+        mediaObject->queue().clear();
+        mediaObject->enqueue(plman.at(sel));
+#ifdef Q_WS_MAEMO_5
+        QMaemo5InformationBox::information(this, tr ("Song enqueued as next song"),
+        QMaemo5InformationBox::DefaultTimeout);
+#endif
+
+    }
 }
 
 void MainWindow::contextMenuEvent (QContextMenuEvent*e)
@@ -764,33 +807,55 @@ void MainWindow::setRowFromItem (int row, const PlaylistItem& item)
         return;
     if (item.artist.isEmpty() && item.title.isEmpty())
     {
-        QTableWidgetItem *item1 = new QTableWidgetItem(item.uri);
-        item1->setFlags(item1->flags() ^ Qt::ItemIsEditable);
-        musicTable->setItem(row, 1, item1);
+        int col = headers.indexOf("Title");
+        if (col >= 0)
+        {
+            QTableWidgetItem *item1 = new QTableWidgetItem(item.uri);
+            item1->setFlags(item1->flags() ^ Qt::ItemIsEditable);
+            musicTable->setItem(row, col, item1);
+        }
     }
     else
     {
-        QTableWidgetItem *item1 = new QTableWidgetItem(item.artist);
-        item1->setFlags(item1->flags() ^ Qt::ItemIsEditable);
-        musicTable->setItem(row, 0, item1);
-        QTableWidgetItem *item2 = new QTableWidgetItem(item.title);
-        item2->setFlags(item2->flags() ^ Qt::ItemIsEditable);
-        musicTable->setItem(row, 1, item2);
-        QTableWidgetItem *item3 = new QTableWidgetItem(item.album);
-        item3->setFlags(item3->flags() ^ Qt::ItemIsEditable);
-        musicTable->setItem(row, 2, item3);
+        int col = headers.indexOf("Artist");
+        if (col >= 0)
+        {
+            QTableWidgetItem *item1 = new QTableWidgetItem(item.artist);
+            item1->setFlags(item1->flags() ^ Qt::ItemIsEditable);
+            musicTable->setItem(row, col, item1);
+        }
+        col = headers.indexOf("Title");
+        if (col >= 0)
+        {
+            if (!musicTable->item (row, col))
+            {
+                QTableWidgetItem *item2 = new QTableWidgetItem(item.title);
+                item2->setFlags(item2->flags() ^ Qt::ItemIsEditable);
+                musicTable->setItem(row, col, item2);
+            }
+            else
+            {
+                musicTable->item (row, col)->setText(item.title);
+            }
+        }
+        col = headers.indexOf("Album");
+        if (col >= 0)
+        {
+            QTableWidgetItem *item3 = new QTableWidgetItem(item.album);
+            item3->setFlags(item3->flags() ^ Qt::ItemIsEditable);
+            musicTable->setItem(row, col, item3);
+        }
     }
 
-    if (!musicTable->cellWidget(row, 3))
+    int controlCol = headers.indexOf("Controls");
+    if (controlCol >= 0 && !musicTable->cellWidget(row, controlCol))
     {
         QLabel* label = new QLabel;
         label->setText(QString::fromUtf8("<b><a style='text-decoration:none' href='up'>▲</a> <a style='text-decoration:none' href='down'>▼</a> <a style='text-decoration:none' href='del'>╳</a> <a style='text-decoration:none' href='info'>i</a></b>"));
         label->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
         label->setProperty("row", row);
-        musicTable->setCellWidget(row, 3, label);
+        musicTable->setCellWidget(row, controlCol, label);
         connect (label, SIGNAL (linkActivated (const QString&)),  this, SLOT (playlistControl (const QString&)));
-/*        connect (down, SIGNAL (linkActivated (const QString&)),  this, SLOT (buttonDown ()));
-        connect (del, SIGNAL (linkActivated (const QString&)),  this, SLOT (buttonDel ()));*/
     }
 }
 
@@ -811,15 +876,18 @@ void MainWindow::playlistControl (const QString& con)
 
 void MainWindow::buttonUp(int i)
 {
-    //int i = sender()->parent()->property("row").toInt();
     qDebug () << "Presses up on " << i;
     if (i)
     {
         plman.moveItemUp(i);
         setRowFromItem (i, plman.getItem(i));
         setRowFromItem (i - 1, plman.getItem(i - 1));
-        musicTable->cellWidget(i, 3)->setProperty("row", i);
-        musicTable->cellWidget(i - 1, 3)->setProperty("row", i - 1);
+        int controlCol = headers.indexOf("Controls");
+        if (controlCol >= 0)
+        {
+            musicTable->cellWidget(i, controlCol)->setProperty("row", i);
+            musicTable->cellWidget(i - 1, controlCol)->setProperty("row", i - 1);
+        }
         musicTable->selectRow(i - 1);
     }
 }
@@ -832,8 +900,12 @@ void MainWindow::buttonDown(int i)
         plman.moveItemDown(i);
         setRowFromItem (i, plman.getItem(i));
         setRowFromItem (i + 1, plman.getItem(i + 1));
-        musicTable->cellWidget(i, 3)->setProperty("row", i);
-        musicTable->cellWidget(i + 1, 3)->setProperty("row", i + 1);
+        int controlCol = headers.indexOf("Controls");
+        if (controlCol >= 0)
+        {
+            musicTable->cellWidget(i, controlCol)->setProperty("row", i);
+            musicTable->cellWidget(i + 1, controlCol)->setProperty("row", i + 1);
+        }
         musicTable->selectRow(i + 1);
     }
 }
@@ -841,6 +913,8 @@ void MainWindow::buttonDown(int i)
 void MainWindow::buttonDel(int i)
 {
     qDebug () << "Presses del on " << i;
+    if (QMessageBox::question(this, "Confirm remove", "Are you sure you want to remove this item?", QMessageBox::Yes, QMessageBox::No) == QMessageBox::No)
+        return;
     if (i < plman.size())
     {
         plman.removeItem(i);
@@ -864,15 +938,43 @@ void MainWindow::itemUpdated(int index)
 void MainWindow::itemRemoved (int i)
 {
     musicTable->removeRow(i);
+    int controlCol = headers.indexOf("Controls");
+    if (controlCol < 0)
+        return;
     for (int j = i ? (i - 1) : 0; j < musicTable->rowCount(); ++j)
     {
-        if (musicTable->cellWidget(j, 3))
-            musicTable->cellWidget(j, 3)->setProperty("row", j);
+        if (musicTable->cellWidget(j, controlCol))
+            musicTable->cellWidget(j, controlCol)->setProperty("row", j);
     }
 }
 
+void MainWindow::upSelected()
+{
+    int sel = musicTable->currentRow();
+    if (sel > 0)
+        buttonUp(sel);
+}
+
+void MainWindow::downSelected()
+{
+    int sel = musicTable->currentRow();
+    if (sel >= 0)
+        buttonDown(sel);
+}
+
+
+
 void MainWindow::showOptions ()
 {
-    OptionDialog dlg (this, settings);
-    dlg.show();
+    OptionDialog* dlg = new OptionDialog (this, settings);
+    dlg->exec();
+    delete dlg;
+    setOrientation ();
+    if (headers != settings.value("headers", QStringList ()).toStringList())
+    {
+        headers = settings.value("headers", QStringList ()).toStringList();
+        musicTable->setColumnCount(headers.size ());
+        musicTable->setHorizontalHeaderLabels(headers);
+        playlistChanged(0);
+    }
 }

@@ -116,12 +116,15 @@ void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State old
     QMap<QString, QString> metaData = metaInformationResolver->metaData();
 
 
-    if (index >= 0 && newState != Phonon::ErrorState)
+    if (index >= 0 && newState != Phonon::ErrorState && index < items.size ())
     {
         items[index].artist = metaData.value("ARTIST");
         items[index].title = metaData.value("TITLE");
         items[index].album = metaData.value("ALBUM");
-        qDebug () << "Info is: " << items[index].artist << " - " << items[index].title;
+/*        items[index].year = metaData.value("DATE");
+        items[index].genre = metaData.value("GENRE");
+        qDebug () << "Meta " << metaData;
+        qDebug () << "Info is: " << items[index].year << " - " << items[index].genre;*/
         if (metaData.isEmpty())
             qDebug () << "Detected to be empty: " << items[index].uri;
         else
