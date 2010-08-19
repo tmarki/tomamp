@@ -9,7 +9,7 @@ QStringList allowedExtensions;
 PlaylistManager::PlaylistManager(QWidget* parent)
     : parentWidget (parent), lastMetaRead (-1)
 {
-    allowedExtensions << "mp3" << "ogg" << "wav" << "wmv" << "wma";
+    allowedExtensions << "mp3" << "ogg" << "wav" << "wmv" << "wma" << "flac";
 //    qDebug () << Phonon::BackendCapabilities::availableMimeTypes();
     metaInformationResolver = new Phonon::MediaObject(parent);
     connect(metaInformationResolver, SIGNAL(stateChanged(Phonon::State,Phonon::State)),
@@ -312,7 +312,9 @@ void PlaylistManager::removeItem(int i)
 
 bool PlaylistManager::fileSupported (const QString& fname) const
 {
-    QString ext = fname.right(3).toLower();
+    if (fname.lastIndexOf('.') < 0)
+        return false;
+    QString ext = fname.right(fname.size() - fname.lastIndexOf('.') - 1).toLower();
     foreach (QString e, allowedExtensions)
     {
         if (ext == e)

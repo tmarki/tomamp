@@ -132,7 +132,8 @@ void MainWindow::about()
         tr("TomAmp is a simple playlist-based music player.\n\n"
         "(c) 2010 Tamas Marki <tmarki@gmail.com>\n\n"
         "Please send comments and bug reports to the above e-mail address.\n\n"
-        "Icons by http://itweek.deviantart.com/"));
+        "Icons by http://itweek.deviantart.com/\n\n"
+        "Thanks to Attila Csipa for the Diablo build"));
 }
 
 void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState */)
