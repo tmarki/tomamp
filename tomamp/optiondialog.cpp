@@ -119,11 +119,4 @@ void OptionDialog::orderControl (QString link)
     setupUi();
 }
 
-void OptionDialog::upColumn (int i)
-{
-}
-
-void OptionDialog::downColumn (int i)
-{
-}
 

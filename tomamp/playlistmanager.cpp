@@ -29,7 +29,6 @@ int PlaylistManager::indexOf(const Phonon::MediaSource &s) const
 void PlaylistManager::parseAndAddFolder(const QString &dir, bool recursive)
 {
     QStringList filters;
-//    filters << "*.mp3";
 
     QStringList files = QDir (dir).entryList(filters);
 
@@ -38,7 +37,6 @@ void PlaylistManager::parseAndAddFolder(const QString &dir, bool recursive)
 
     qDebug () << "Parsing folder " << dir;
 
-    //settings.setValue("LastFolder", dir);
     int index = items.size();
     foreach (QString string, files)
     {
@@ -58,7 +56,6 @@ void PlaylistManager::parseAndAddFolder(const QString &dir, bool recursive)
             items.append(PlaylistItem (PlaylistItem (fname)));
         }
     }
-//    if (!items.isEmpty())
     if (items.size () > index)
     {
         metaInformationResolver->setCurrentSource(items.at(index).source);
@@ -79,7 +76,6 @@ void PlaylistManager::addStringList(const QStringList& list)
             items.append(PlaylistItem (string));
         }
     }
-//    if (!items.isEmpty())
     if (items.size () > index)
     {
         metaInformationResolver->setCurrentSource(items.at(index).source);
@@ -91,7 +87,7 @@ void PlaylistManager::addStringList(const QStringList& list)
 void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State oldState)
 {
     qDebug () << "Meta state now " << newState << " old state " << oldState;
-    // This is an ugly hack, since the metaInformationResolver doesn't properly load the assigned source when it's in the error state
+    // NOTE: This is an ugly hack, since the metaInformationResolver doesn't properly load the assigned source when it's in the error state
     // In order to properly read the next file we have to set it as current source again when the resolver entered the stopped state after the error
     static bool wasError = false;
     if (wasError && newState == Phonon::StoppedState)
@@ -111,7 +107,6 @@ void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State old
     }
 
     int index = lastMetaRead;
-    qDebug () << "Reading meta info of " << metaInformationResolver->currentSource().fileName() << " => " << index;
 
     QMap<QString, QString> metaData = metaInformationResolver->metaData();
 
@@ -125,9 +120,7 @@ void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State old
         items[index].genre = metaData.value("GENRE");
         qDebug () << "Meta " << metaData;
         qDebug () << "Info is: " << items[index].year << " - " << items[index].genre;*/
-        if (metaData.isEmpty())
-            qDebug () << "Detected to be empty: " << items[index].uri;
-        else
+        if (!metaData.isEmpty())
             items[index].playable = true;
         emit itemUpdated (index);
     }
@@ -292,9 +285,6 @@ void PlaylistManager::clearPlaylist()
 {
     items.clear();
     emit playlistChanged(0);
-/*    while (musicTable->rowCount())
-        musicTable->removeRow(0);
-    mediaObject->clear();*/
 }
 
 QStringList PlaylistManager::playlistStrings() const
@@ -335,7 +325,6 @@ bool PlaylistManager::moveItemUp (int i)
         items[i - 1] = items[i];
         items[i] = tmp;
         return true;
-//        emit playlistChanged(i - 1);
     }
     return false;
 }
@@ -348,7 +337,6 @@ bool PlaylistManager::moveItemDown (int i)
         items[i + 1] = items[i];
         items[i] = tmp;
         return true;
-//        emit playlistChanged(i - 1);
     }
     return false;
 }
