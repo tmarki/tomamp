@@ -71,9 +71,19 @@ void OptionDialog::setupUi()
     }
     sub->addLayout(headerLayout);
     mainLayout->addLayout(sub);
+    QCheckBox *cb = new QCheckBox (tr ("Flip UI controls"));
+    cb->setChecked(settings.value("uiflipped", false).toBool());
+    connect (cb, SIGNAL(toggled(bool)), this, SLOT(toggleFlip(bool)));
+    mainLayout->addWidget(cb);
     setLayout(mainLayout);
     setWindowTitle("Settings");
 }
+
+void OptionDialog::toggleFlip (bool val)
+{
+    settings.setValue("uiflipped", val);
+}
+
 
 void OptionDialog::orderControl (QString link)
 {

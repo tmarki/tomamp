@@ -158,6 +158,7 @@ private:
     QAction *removeSelected;
     QAction *removeAllButSelected;
     QAction *enqueueAction;
+    QAction *enqueueActionButton;
     QAction *optionAction;
     QMenu   *contextMenu;
     QToolBar *bar;
