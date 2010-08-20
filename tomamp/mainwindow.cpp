@@ -143,7 +143,7 @@ void MainWindow::addUrl()
 
 void MainWindow::about()
 {
-    QMessageBox::information(this, tr("About TomAmp v0.1"),
+    QMessageBox::information(this, tr("About TomAmp v0.2"),
         tr("TomAmp is a simple playlist-based music player.\n\n"
         "(c) 2010 Tamas Marki <tmarki@gmail.com>\n\n"
         "Please send comments and bug reports to the above e-mail address.\n\n"
@@ -724,7 +724,7 @@ void MainWindow::enqueueSelected()
         mediaObject->queue().clear();
         mediaObject->enqueue(plman.at(sel));
 #ifdef Q_WS_MAEMO_5
-        QMaemo5InformationBox::information(this, tr ("Song enqueued as next song"),
+        QMaemo5InformationBox::information(this, tr ("Enqueued as next song"),
         QMaemo5InformationBox::DefaultTimeout);
 #endif
 
@@ -767,7 +767,16 @@ void MainWindow::savePlaylist ()
     QString filename = QFileDialog::getSaveFileName(this, tr("Please select file name"), "", "Playlist Files (*.m3u *.pls)");
     if (filename.isEmpty())
         return;
-    plman.savePlaylist(filename);
+    if (!plman.savePlaylist(filename))
+    {
+#ifdef Q_WS_MAEMO_5
+        QMaemo5InformationBox::information(this, tr ("Error writing playlist file"),
+        QMaemo5InformationBox::DefaultTimeout);
+#else
+        QMessageBox::critical(this, "Write error", "Error writing playlist file", QMessageBox::Ok);
+#endif
+    }
+
 }
 
 void MainWindow::loadPlaylist ()
@@ -842,6 +851,7 @@ void MainWindow::setRowFromItem (int row, const PlaylistItem& item)
         {
             QTableWidgetItem *item3 = new QTableWidgetItem(item.album);
             item3->setFlags(item3->flags() ^ Qt::ItemIsEditable);
+
             musicTable->setItem(row, col, item3);
         }
     }

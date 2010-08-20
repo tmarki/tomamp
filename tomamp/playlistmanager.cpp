@@ -138,11 +138,11 @@ void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State old
     }
 }
 
-void PlaylistManager::savePlaylist(const QString& filenam)
+bool PlaylistManager::savePlaylist(const QString& filenam)
 {
     QString filename = filenam;
     if (filename.isEmpty())
-        return;
+        return false;
     bool writepls = false;
     if (filename.length() < 4 || (filename.right(4).toLower() != ".m3u" && filename.right(4).toLower() != ".pls"))
     {
@@ -176,11 +176,12 @@ void PlaylistManager::savePlaylist(const QString& filenam)
         if (writepls)
             f.write ("Version=2\n");
         f.close ();
+        return true;
     }
     catch (...)
     {
-//        QMessageBox::critical(this, "Write error", "Could not write playlist file", QMessageBox::Ok);
     }
+    return false;
 }
 
 void PlaylistManager::loadPlaylist(const QString& filename)

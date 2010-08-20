@@ -40,7 +40,7 @@ public:
     bool moveItemUp (int i);
     bool moveItemDown (int i);
 public slots:
-    void savePlaylist(const QString& filename);
+    bool savePlaylist(const QString& filename);
     void loadPlaylist(const QString& filename);
     void clearPlaylist();
     void addPlaylist (const QString& filename);
