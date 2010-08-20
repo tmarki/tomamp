@@ -13,7 +13,6 @@
 MainWindow::MainWindow()
     : plman (this), settings (tr ("TomAmp"), "TomAmp"), isPlaying (false)
 {
-    setOrientation();
     audioOutput = new Phonon::AudioOutput(Phonon::MusicCategory, this);
     mediaObject = new Phonon::MediaObject(this);
 
@@ -50,6 +49,7 @@ MainWindow::MainWindow()
         setItem (curind, false);
     audioOutput->setVolume(settings.value("volume", .5).toReal());
     QApplication::setWindowIcon(QIcon (QPixmap (":images/tomamp")));
+    setOrientation();
 }
 
 MainWindow::~MainWindow()
@@ -72,11 +72,17 @@ void MainWindow::setOrientation ()
 #ifdef Q_WS_MAEMO_5
     QString orient = settings.value("orientation", "Automatic").toString();
     if (orient == "Portrait")
+    {
         setAttribute(Qt::WA_Maemo5PortraitOrientation, true);
+    }
     else if (orient == "Landscape")
+    {
         setAttribute(Qt::WA_Maemo5LandscapeOrientation, true);
+    }
     else
+    {
         setAttribute(Qt::WA_Maemo5AutoOrientation, true);
+    }
 #endif
 }
 
@@ -215,6 +221,7 @@ void MainWindow::next()
     if (mediaObject->queue().size())
     {
         setItem (plman.indexOf(mediaObject->queue()[0]), wasPlaying);
+        mediaObject->queue().clear();
         return;
     }
     int index = plman.indexOf(mediaObject->currentSource());
@@ -644,8 +651,11 @@ void MainWindow::setupUi()
 
     volumeSlider = new Phonon::VolumeSlider(this);
     volumeSlider->setAudioOutput(audioOutput);
-    volumeSlider->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    if (flip) volumeSlider->setOrientation(Qt::Vertical);
+    if (flip)
+    {
+        volumeSlider->setOrientation(Qt::Vertical);
+    }
+    volumeSlider->setMinimumWidth(150);
     volumeSlider->setMuteVisible(false);
     bar->addAction(playAction);
     bar->addAction(pauseAction);
@@ -680,6 +690,8 @@ void MainWindow::setupUi()
     musicTable->setHorizontalHeaderLabels(headers);
     musicTable->setSelectionMode(QAbstractItemView::SingleSelection);
     musicTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+//    musicTable->setAlternatingRowColors(true);
+    musicTable->verticalHeader ()->hide();
     connect(musicTable, SIGNAL(cellDoubleClicked(int,int)),
         this, SLOT(tableClicked(int,int)));
     connect(musicTable, SIGNAL(cellClicked(int,int)),
@@ -747,12 +759,13 @@ void MainWindow::cellClicked(int /*row*/, int)
 void MainWindow::enqueueSelected()
 {
     int sel = musicTable->currentRow();
+    qDebug () << "Enqueue on " << sel;
     if (sel >= 0)
     {
         mediaObject->queue().clear();
         mediaObject->enqueue(plman.at(sel));
 #ifdef Q_WS_MAEMO_5
-        QMaemo5InformationBox::information(this, tr ("Enqueued as next song"),
+        QMaemo5InformationBox::information(this, plman.getItem(sel).title + tr (" enqueued as next song"),
         QMaemo5InformationBox::DefaultTimeout);
 #endif
 
@@ -888,7 +901,7 @@ void MainWindow::setRowFromItem (int row, const PlaylistItem& item)
     if (controlCol >= 0 && !musicTable->cellWidget(row, controlCol))
     {
         QLabel* label = new QLabel;
-        label->setText(QString::fromUtf8("<b><a style='text-decoration:none' href='up'>▲</a> <a style='text-decoration:none' href='down'>▼</a> <a style='text-decoration:none' href='del'>╳</a> <a style='text-decoration:none' href='info'>i</a></b>"));
+        label->setText(QString::fromUtf8("<b><a style='text-decoration:none' href='up'>▲</a> <a style='text-decoration:none' href='down'>▼</a> <a style='text-decoration:none' href='del'>╳</a> <a style='text-decoration:none' href='enq'>E</a></b>"));
         label->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
         label->setProperty("row", row);
         musicTable->setCellWidget(row, controlCol, label);
@@ -899,13 +912,17 @@ void MainWindow::setRowFromItem (int row, const PlaylistItem& item)
 void MainWindow::playlistControl (const QString& con)
 {
     int i = sender ()->property("row").toInt();
-    qDebug () << "Playlist control: " << con << " on " << i;
     if (con == "up")
         buttonUp(i);
     else if (con == "down")
         buttonDown(i);
     else if (con == "del")
         buttonDel (i);
+    else if (con == "enq")
+    {
+        musicTable->selectRow(i);
+        enqueueSelected();
+    }
     else
         QMessageBox::information(this, tr ("Coming up..."), tr ("This feature is not implemented yet."));
 }
@@ -913,7 +930,6 @@ void MainWindow::playlistControl (const QString& con)
 
 void MainWindow::buttonUp(int i)
 {
-    qDebug () << "Presses up on " << i;
     if (i)
     {
         plman.moveItemUp(i);
@@ -931,7 +947,6 @@ void MainWindow::buttonUp(int i)
 
 void MainWindow::buttonDown(int i)
 {
-    qDebug () << "Presses down on " << i;
     if (i < plman.size() - 1)
     {
         plman.moveItemDown(i);
@@ -949,7 +964,6 @@ void MainWindow::buttonDown(int i)
 
 void MainWindow::buttonDel(int i)
 {
-    qDebug () << "Presses del on " << i;
     if (QMessageBox::question(this, "Confirm remove", "Are you sure you want to remove this item?", QMessageBox::Yes, QMessageBox::No) == QMessageBox::No)
         return;
     if (i < plman.size())
@@ -1020,4 +1034,7 @@ void MainWindow::showOptions ()
         musicTable->setHorizontalHeaderLabels(headers);
         playlistChanged(0);
     }
+    int curitem = plman.indexOf(mediaObject->currentSource());
+    if (curitem >= 0 && isPlaying)
+        highlightRow(curitem);
 }

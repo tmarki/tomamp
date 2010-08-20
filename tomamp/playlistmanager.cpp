@@ -10,7 +10,6 @@ PlaylistManager::PlaylistManager(QWidget* parent)
     : parentWidget (parent), lastMetaRead (-1)
 {
     allowedExtensions << "mp3" << "ogg" << "wav" << "wmv" << "wma" << "flac";
-//    qDebug () << Phonon::BackendCapabilities::availableMimeTypes();
     metaInformationResolver = new Phonon::MediaObject(parent);
     connect(metaInformationResolver, SIGNAL(stateChanged(Phonon::State,Phonon::State)),
         this, SLOT(metaStateChanged(Phonon::State,Phonon::State)));
@@ -35,7 +34,6 @@ void PlaylistManager::parseAndAddFolder(const QString &dir, bool recursive)
     if (files.isEmpty())
         return;
 
-    qDebug () << "Parsing folder " << dir;
 
     int index = items.size();
     foreach (QString string, files)
@@ -61,7 +59,6 @@ void PlaylistManager::parseAndAddFolder(const QString &dir, bool recursive)
         metaInformationResolver->setCurrentSource(items.at(index).source);
         lastMetaRead = index;
     }
-    qDebug () << " SIZE: " << items.size ();
     emit playlistChanged (index);
 }
 
@@ -72,7 +69,6 @@ void PlaylistManager::addStringList(const QStringList& list)
     {
         if (fileSupported(string) || string.toLower().startsWith("http"))
         {
-            qDebug () << "Adding " << string;
             items.append(PlaylistItem (string));
         }
     }
@@ -86,7 +82,6 @@ void PlaylistManager::addStringList(const QStringList& list)
 
 void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State oldState)
 {
-    qDebug () << "Meta state now " << newState << " old state " << oldState;
     // NOTE: This is an ugly hack, since the metaInformationResolver doesn't properly load the assigned source when it's in the error state
     // In order to properly read the next file we have to set it as current source again when the resolver entered the stopped state after the error
     static bool wasError = false;
@@ -210,7 +205,6 @@ void PlaylistManager::addPlaylist(const QString& filename)
 
 void PlaylistManager::appendPlaylist(const QString& filename)
 {
-    qDebug () << "Attempting to load playlist: " << filename;
     QFile f(filename);
     if (!f.open (QFile::ReadOnly))
         return;
@@ -223,14 +217,12 @@ void PlaylistManager::appendPlaylist(const QString& filename)
         {
             continue;
         }
-        qDebug () << "Load " << l;
         items.append(PlaylistItem (l));
     }
 }
 
 void PlaylistManager::appendPlaylistPLS(const QString& filename)
 {
-    qDebug () << "Attempting to load playlist: " << filename;
     QFile f(filename);
     if (!f.open (QFile::ReadOnly))
         return;
@@ -245,7 +237,6 @@ void PlaylistManager::appendPlaylistPLS(const QString& filename)
         {
             continue;
         }
-        qDebug () << "PLS " << l;
         if (l.trimmed().toLower().left(4) == "file")
         {
             QStringList tokens = l.split('=');
@@ -253,7 +244,6 @@ void PlaylistManager::appendPlaylistPLS(const QString& filename)
                 continue;
             tokens[0] = tokens[0].mid (4);
             filemap.insert(tokens[0].toInt (), items.size ());
-            qDebug () << tokens;
             items.append(PlaylistItem (tokens[1]));
         }
         else if (l.trimmed().toLower().left(5) == "title")
@@ -263,9 +253,7 @@ void PlaylistManager::appendPlaylistPLS(const QString& filename)
                 continue;
             tokens[0] = tokens[0].mid (5);
             int toupdate = filemap[tokens[0].toInt()];
-            qDebug () << "Need to update " << toupdate << " for " << l;
             QStringList metatok = tokens[1].split (" - ");
-            qDebug () << metatok;
             if (metatok.size() > 2 && toupdate >= 0 && toupdate < items.size ())
             {
                 items[toupdate].artist = metatok[0];
@@ -293,7 +281,6 @@ QStringList PlaylistManager::playlistStrings() const
     QStringList ret;
     for (int i = 0; i < items.size (); ++i)
         ret << items[i].uri;
-    qDebug () << "Returning playlist " << ret << " SIZE: " << items.size ();
     return ret;
 }
 
