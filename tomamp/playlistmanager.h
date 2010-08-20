@@ -33,6 +33,7 @@ public:
     void removeItem (int i);
 
     QStringList playlistStrings () const;
+    QStringList allowedExt () const { return allowedExtensions; }
     int size () const { return items.size (); }
     int indexOf (const Phonon::MediaSource& s) const;
     const Phonon::MediaSource& at (int i) { return items[i].source; }
@@ -58,6 +59,7 @@ private:
     Phonon::MediaObject *metaInformationResolver;
     QList<PlaylistItem> items;
     QWidget* parentWidget;
+    static QStringList allowedExtensions;
     int lastMetaRead;
 };
 

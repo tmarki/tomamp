@@ -3,13 +3,20 @@
 #include <QUrl>
 #include <QMap>
 
-QStringList allowedExtensions;
+QStringList PlaylistManager::allowedExtensions;
 
 
 PlaylistManager::PlaylistManager(QWidget* parent)
     : parentWidget (parent), lastMetaRead (-1)
 {
-    allowedExtensions << "mp3" << "ogg" << "wav" << "wmv" << "wma" << "flac";
+    if (!allowedExtensions.size ())
+    {
+        allowedExtensions << "mp3" << "ogg" << "wav" << "mlp" << "wma" << "flac" << "amr";
+        allowedExtensions << "midi" << "mid" << "mpeg" << "qcp" << "ac3" << "aiff" << "act";
+        allowedExtensions << "alac" << "alaw" << "au" << "eac3" << "aac" << "ape" << "gsm";
+        allowedExtensions << "mod" << "mp2" << "sbc" << "spx" << "tta" << "ra" << "riff";
+        allowedExtensions << "m4a" << "mp4" << "m4p" << "pcm" << "amr";
+    }
     metaInformationResolver = new Phonon::MediaObject(parent);
     connect(metaInformationResolver, SIGNAL(stateChanged(Phonon::State,Phonon::State)),
         this, SLOT(metaStateChanged(Phonon::State,Phonon::State)));

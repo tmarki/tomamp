@@ -32,10 +32,22 @@ MainWindow::MainWindow()
     qsrand (time (NULL));
     repeat = settings.value("repeat", false).toBool();
     shuffle = settings.value("shuffle", false).toBool();
-    headers = settings.value ("headers", QStringList()).toStringList();
+    QStringList allowedHeaders;
+    allowedHeaders << "Artist" << "Title" << "Album" << "Controls";
+    foreach (QString h, settings.value ("headers", QStringList()).toStringList())
+    {
+        if (allowedHeaders.indexOf(h) >= 0)
+            headers << h;
+    }
+    if (!headers.size())
+        headers << "Artist" << "Title" << "Album";
+    
     setupShuffleList();
     setupActions();
     setupMenus();
+/*    foreach (QString s, Phonon::BackendCapabilities::availableMimeTypes())
+        qDebug () << s;*/
+    
 /*    if (settings.value("uiflipped", false).toBool())
         setupUiFlipped();
     else*/
@@ -91,8 +103,10 @@ void MainWindow::addFiles()
     QString folder = settings.value("LastFolder").toString();
     if (folder.isEmpty())
         folder = QDesktopServices::storageLocation(QDesktopServices::MusicLocation);
+    QString ext = "*." + plman.allowedExt().join(" *.");
+    ext = "Music files (" + ext + ");;Playlists (*.m3u *.pls)";
     QStringList files = QFileDialog::getOpenFileNames(this, tr("Select Files To Add"),
-                    folder, "Music files (*.mp3 *.ogg *.wav *.flac);;Playlists (*.m3u *.pls)");
+                                                      folder, ext, 0, QFileDialog::DontUseNativeDialog);
 
     if (files.isEmpty())
         return;
@@ -654,8 +668,12 @@ void MainWindow::setupUi()
     if (flip)
     {
         volumeSlider->setOrientation(Qt::Vertical);
+        volumeSlider->setMinimumHeight(150);
     }
-    volumeSlider->setMinimumWidth(150);
+    else
+    {
+        volumeSlider->setMinimumWidth(150);
+    }
     volumeSlider->setMuteVisible(false);
     bar->addAction(playAction);
     bar->addAction(pauseAction);
