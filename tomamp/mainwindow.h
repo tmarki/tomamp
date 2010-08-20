@@ -44,11 +44,19 @@
 
 #include <QMainWindow>
 #include <QSettings>
+#if QT_VERSION < 0x040600
+#include <audiooutput.h>
+#include <seekslider.h>
+#include <mediaobject.h>
+#include <volumeslider.h>
+#include <backendcapabilities.h>
+#else
 #include <phonon/audiooutput.h>
 #include <phonon/seekslider.h>
 #include <phonon/mediaobject.h>
 #include <phonon/volumeslider.h>
 #include <phonon/backendcapabilities.h>
+#endif
 #include <QList>
 #include "playlistmanager.h"
 
@@ -150,6 +158,7 @@ private:
     QAction *removeSelected;
     QAction *removeAllButSelected;
     QAction *enqueueAction;
+    QAction *enqueueActionButton;
     QAction *optionAction;
     QMenu   *contextMenu;
     QToolBar *bar;

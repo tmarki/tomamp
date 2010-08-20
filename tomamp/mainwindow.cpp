@@ -37,7 +37,10 @@ MainWindow::MainWindow()
     setupShuffleList();
     setupActions();
     setupMenus();
-    setupUi();
+/*    if (settings.value("uiflipped", false).toBool())
+        setupUiFlipped();
+    else*/
+    setupUi ();
     show ();
     timeLcd->display("00:00:00");
     plman.addStringList(settings.value("lastPlaylist").toStringList());
@@ -147,7 +150,8 @@ void MainWindow::about()
         tr("TomAmp is a simple playlist-based music player.\n\n"
         "(c) 2010 Tamas Marki <tmarki@gmail.com>\n\n"
         "Please send comments and bug reports to the above e-mail address.\n\n"
-        "Icons by http://itweek.deviantart.com/"));
+        "Icons by http://itweek.deviantart.com/\n\n"
+        "Special thanks to Attila Csipa"));
 }
 
 void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState */)
@@ -174,7 +178,10 @@ void MainWindow::stateChanged(Phonon::State newState, Phonon::State /* oldState 
             playAction->setEnabled(false);
             pauseAction->setEnabled(true);
             stopAction->setEnabled(true);
-            //lastPlayed = plman.indexOf(mediaObject->currentSource());
+            unhighlightRow(lastPlayed);
+            lastPlayed = plman.indexOf(mediaObject->currentSource());
+            highlightRow(plman.indexOf(mediaObject->currentSource()));
+            musicTable->selectRow(plman.indexOf(mediaObject->currentSource()));
             break;
         case Phonon::StoppedState:
             setWindowTitle("TomAmp");
@@ -259,8 +266,8 @@ void MainWindow::setItem(int i, bool doplay)
 {
     if (i < plman.size() && i >= 0)
     {
-        if (lastPlayed >= 0)
-            unhighlightRow(lastPlayed);
+/*        if (lastPlayed >= 0)
+            unhighlightRow(lastPlayed);*/
         if (shuffle)
         {
             mediaObject->setCurrentSource(plman.at (shuffleList[i]));
@@ -488,6 +495,7 @@ void MainWindow::setupActions()
     shuffleAction->setCheckable(true);
     shuffleAction->setChecked(shuffle);
     shuffleAction->setShortcut(tr("Ctrl+H"));
+    enqueueActionButton = new QAction (tr ("E"), this);
     volumeAction = new QAction(QIcon (QPixmap (":images/volume")), "", this);
     volumeAction->setCheckable(true);
     volumeAction->setShortcut(tr("Ctrl+V"));
@@ -520,6 +528,7 @@ void MainWindow::setupActions()
     connect(repeatAction, SIGNAL(triggered()), this, SLOT(repeatToggle()));
     connect(shuffleAction, SIGNAL(triggered()), this, SLOT(shuffleToggle()));
     connect(volumeAction, SIGNAL(triggered()), this, SLOT(volumeToggle()));
+    connect(enqueueActionButton, SIGNAL(triggered()), this, SLOT(enqueueSelected()));
 
     connect(addFilesAction, SIGNAL(triggered()), this, SLOT(addFiles()));
     connect(addFoldersAction, SIGNAL(triggered()), this, SLOT(addFolder()));
@@ -591,7 +600,7 @@ void MainWindow::volumeToggle ()
 void MainWindow::play()
 {
     mediaObject->play();
-    lastPlayed = plman.indexOf(mediaObject->currentSource());
+//    lastPlayed = plman.indexOf(mediaObject->currentSource());
     highlightRow(lastPlayed);
     isPlaying = true;
 }
@@ -624,21 +633,20 @@ void MainWindow::setupMenus()
 void MainWindow::setupUi()
 {
     QToolBar *bar = new QToolBar;
+    bool flip = settings.value("uiflipped", false).toBool();
 
-    bar->setOrientation(Qt::Vertical);
+    if(!flip) bar->setOrientation(Qt::Vertical);
     bar->setStyleSheet("padding:7px");
-    //bar->addAction(volumeAction);
 
     seekSlider = new Phonon::SeekSlider(this);
     seekSlider->setMediaObject(mediaObject);
+    if (flip) seekSlider->setOrientation(Qt::Vertical);
 
     volumeSlider = new Phonon::VolumeSlider(this);
     volumeSlider->setAudioOutput(audioOutput);
     volumeSlider->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    volumeSlider->setOrientation(Qt::Horizontal);
+    if (flip) volumeSlider->setOrientation(Qt::Vertical);
     volumeSlider->setMuteVisible(false);
-//    volumeAddedAction = bar->addWidget(volumeSlider);
-//    volumeAddedAction->setVisible(false);
     bar->addAction(playAction);
     bar->addAction(pauseAction);
     bar->addAction(stopAction);
@@ -649,6 +657,7 @@ void MainWindow::setupUi()
     bar->addAction(upAction);
     bar->addAction(downAction);
     bar->addAction(delAction);
+    bar->addAction(enqueueActionButton);
 
     contextMenu = new QMenu (this);
     enqueueAction = contextMenu->addAction(tr ("Enqueue"));
@@ -684,26 +693,45 @@ void MainWindow::setupUi()
     }
 
 
-    QHBoxLayout *seekerLayout = new QHBoxLayout;
+    QLayout *seekerLayout;
+    QLayout *playbackLayout;
+    if (flip)
+    {
+        seekerLayout = new QVBoxLayout;
+        playbackLayout = new QHBoxLayout;
+        bar->addWidget(timeLcd);
+    }
+    else
+    {
+        seekerLayout = new QHBoxLayout;
+        playbackLayout = new QVBoxLayout;
+    }
     QToolBar* bar2 = new QToolBar;
     bar2->addAction(volumeAction);
     seekerLayout->addWidget(bar2);
     seekerLayout->addWidget(volumeSlider);
     seekerLayout->addWidget(seekSlider);
-    seekerLayout->addWidget(timeLcd);
-
-    QVBoxLayout *playbackLayout = new QVBoxLayout;
+    if (!flip)
+        seekerLayout->addWidget(timeLcd);
     volumeSlider->hide ();
     playbackLayout->addWidget(bar);
 
     QVBoxLayout *seekAndTableLayout = new QVBoxLayout;
 
     seekAndTableLayout->addWidget(musicTable);
-    seekAndTableLayout->addLayout(seekerLayout);
-
     QHBoxLayout *mainLayout = new QHBoxLayout;
     mainLayout->addLayout(seekAndTableLayout);
-    mainLayout->addLayout(playbackLayout);
+    if (flip)
+    {
+        seekAndTableLayout->addLayout(playbackLayout);
+        mainLayout->addLayout(seekerLayout);
+    }
+    else
+    {
+        seekAndTableLayout->addLayout(seekerLayout);
+        mainLayout->addLayout(playbackLayout);
+    }
+
 
     QWidget *widget = new QWidget;
     widget->setLayout(mainLayout);
@@ -975,9 +1003,15 @@ void MainWindow::downSelected()
 
 void MainWindow::showOptions ()
 {
+    bool flip = settings.value("uiflipped", false).toBool();
     OptionDialog* dlg = new OptionDialog (this, settings);
     dlg->exec();
     delete dlg;
+    if (flip != settings.value("uiflipped", false).toBool())
+    {
+        delete centralWidget();
+        setupUi ();
+    }
     setOrientation ();
     if (headers != settings.value("headers", QStringList ()).toStringList())
     {

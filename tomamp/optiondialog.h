@@ -19,9 +19,8 @@ signals:
 public slots:
 private slots:
     void orderControl (QString);
+    void toggleFlip (bool);
 private:
-    void upColumn (int i);
-    void downColumn (int i);
     void    setupUi ();
     QSettings& settings;
     QComboBox* orient;
