@@ -72,24 +72,13 @@ void OptionDialog::setupUi()
     }
     sub->addLayout(headerLayout);
     mainLayout->addLayout(sub);
-    QCheckBox *cb = new QCheckBox (tr ("Flip UI controls"));
-    cb->setChecked(settings.value("uiflipped", false).toBool());
-    connect (cb, SIGNAL(toggled(bool)), this, SLOT(toggleFlip(bool)));
-    mainLayout->addWidget(cb);
     setLayout(mainLayout);
     setWindowTitle("Settings");
 }
 
-void OptionDialog::toggleFlip (bool val)
-{
-    settings.setValue("uiflipped", val);
-}
-
-
 void OptionDialog::orderControl (QString link)
 {
     QString str = sender ()->property("row").toString();
-    qDebug () << "Col action " << link << " on " << str;
     int i = availableHeaders.indexOf(str);
     if (link == "up" && i > 0)
     {
@@ -116,7 +105,6 @@ void OptionDialog::orderControl (QString link)
     delete layout ();
     foreach (QObject* child, children ())
         delete child;
-//    update ();
     setupUi();
 }
 

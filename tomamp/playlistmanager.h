@@ -6,6 +6,8 @@
 #include <phonon/backendcapabilities.h>
 
 
+class QNetworkAccessManager;
+class QNetworkReply;
 
 struct PlaylistItem
 {
@@ -53,6 +55,7 @@ private slots:
     void metaStateChanged(Phonon::State newState, Phonon::State oldState);
     void appendPlaylist (const QString& filename);
     void appendPlaylistPLS (const QString& filename);
+    void playlistDownloadFinished(QNetworkReply*);
 private:
     bool fileSupported (const QString& fname) const;
 
@@ -61,6 +64,7 @@ private:
     QWidget* parentWidget;
     static QStringList allowedExtensions;
     int lastMetaRead;
+    QNetworkAccessManager *downloadmanager;
 };
 
 #endif // PLAYLISTMANAGER_H

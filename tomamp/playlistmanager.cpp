@@ -2,6 +2,9 @@
 #include <QDir>
 #include <QUrl>
 #include <QMap>
+#include <QTemporaryFile>
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkReply>
 
 QStringList PlaylistManager::allowedExtensions;
 
@@ -20,6 +23,9 @@ PlaylistManager::PlaylistManager(QWidget* parent)
     metaInformationResolver = new Phonon::MediaObject(parent);
     connect(metaInformationResolver, SIGNAL(stateChanged(Phonon::State,Phonon::State)),
         this, SLOT(metaStateChanged(Phonon::State,Phonon::State)));
+    downloadmanager = new QNetworkAccessManager(this);
+    connect(downloadmanager, SIGNAL(finished(QNetworkReply*)),
+            this, SLOT(playlistDownloadFinished(QNetworkReply*)));
 }
 
 int PlaylistManager::indexOf(const Phonon::MediaSource &s) const
@@ -76,7 +82,15 @@ void PlaylistManager::addStringList(const QStringList& list)
     {
         if (fileSupported(string) || string.toLower().startsWith("http"))
         {
-            items.append(PlaylistItem (string));
+            if (string.toLower().startsWith("http") && ((string.toLower().endsWith("pls")
+                                        || (string.toLower().endsWith("m3u")))))
+            {
+                downloadmanager->get(QNetworkRequest(QUrl(string)));
+            }
+            else
+            {
+                items.append(PlaylistItem (string));
+            }
         }
     }
     if (items.size () > index)
@@ -87,7 +101,28 @@ void PlaylistManager::addStringList(const QStringList& list)
     emit playlistChanged(index);
 }
 
-void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State oldState)
+void PlaylistManager::playlistDownloadFinished(QNetworkReply* rep)
+{
+    QTemporaryFile tmp;
+    tmp.open ();
+    tmp.write (rep->readAll());
+    tmp.close ();
+    QString filename = tmp.fileName();
+    int index = items.size();
+    if (rep->url().toString().right(4).toLower() == ".m3u")
+        appendPlaylist(filename);
+    else if (rep->url().toString().right(4).toLower() == ".pls")
+        appendPlaylistPLS(filename);
+    if (items.size () > index)
+    {
+        metaInformationResolver->setCurrentSource(items.at(index).source);
+        lastMetaRead = index;
+        emit playlistChanged (index);
+    }
+}
+
+
+void PlaylistManager::metaStateChanged(Phonon::State newState, Phonon::State /*oldState*/)
 {
     // NOTE: This is an ugly hack, since the metaInformationResolver doesn't properly load the assigned source when it's in the error state
     // In order to properly read the next file we have to set it as current source again when the resolver entered the stopped state after the error
@@ -202,7 +237,6 @@ void PlaylistManager::addPlaylist(const QString& filename)
     else if (filename.right(4).toLower() == ".pls")
         appendPlaylistPLS(filename);
     if (items.size () > index)
-//    if (!items.isEmpty())
     {
         metaInformationResolver->setCurrentSource(items.at(index).source);
         lastMetaRead = index;
@@ -220,10 +254,12 @@ void PlaylistManager::appendPlaylist(const QString& filename)
     QStringList lines = tmp.split("\n");
     foreach (QString l, lines)
     {
-        if (l.isEmpty() || (!QFileInfo (l).exists() && (l.indexOf("http") != 0)))
+        if (l.isEmpty() || (!QFileInfo (l).exists() && (l.indexOf("http") != 0))
+            || l.trimmed().startsWith("#"))
         {
             continue;
         }
+        l = l.replace("\r", "");
         items.append(PlaylistItem (l));
     }
 }
@@ -240,10 +276,12 @@ void PlaylistManager::appendPlaylistPLS(const QString& filename)
 
     foreach (QString l, lines)
     {
-        if (l.isEmpty() || l.trimmed().toLower() == "[playlist]" || l.trimmed().toLower() == "version=2")
+        if (l.isEmpty() || l.trimmed().toLower() == "[playlist]" || l.trimmed().toLower() == "version=2"
+            || l.trimmed().startsWith(";"))
         {
             continue;
         }
+        l = l.replace("\r", "");
         if (l.trimmed().toLower().left(4) == "file")
         {
             QStringList tokens = l.split('=');

@@ -19,7 +19,6 @@ signals:
 public slots:
 private slots:
     void orderControl (QString);
-    void toggleFlip (bool);
 private:
     void    setupUi ();
     QSettings& settings;

@@ -8,7 +8,7 @@
 #include "optiondialog.h"
 #include "time.h"
 
-//#define AVOID_INPUT_DIALOG 0
+//#define AVOID_INPUT_DIALOG
 
 MainWindow::MainWindow()
     : plman (this), settings (tr ("TomAmp"), "TomAmp"), isPlaying (false)
@@ -26,6 +26,8 @@ MainWindow::MainWindow()
     connect (&plman, SIGNAL (playlistChanged (int)), this, SLOT (playlistChanged(int)));
     connect (&plman, SIGNAL (itemUpdated(int)), this, SLOT (itemUpdated (int)));
     connect (&plman, SIGNAL (itemRemoved(int)), this, SLOT (itemRemoved (int)));
+
+    connect (QApplication::desktop(), SIGNAL(resized(int)), this, SLOT(orientationChanged()));
 
     Phonon::createPath(mediaObject, audioOutput);
 
@@ -45,12 +47,9 @@ MainWindow::MainWindow()
     setupShuffleList();
     setupActions();
     setupMenus();
-/*    foreach (QString s, Phonon::BackendCapabilities::availableMimeTypes())
-        qDebug () << s;*/
     
-/*    if (settings.value("uiflipped", false).toBool())
-        setupUiFlipped();
-    else*/
+    QRect screenGeometry = QApplication::desktop()->screenGeometry();
+    portrait = screenGeometry.width() < screenGeometry.height();
     setupUi ();
     show ();
     timeLcd->display("00:00:00");
@@ -97,6 +96,18 @@ void MainWindow::setOrientation ()
     }
 #endif
 }
+
+void MainWindow::orientationChanged()
+{
+    QRect screenGeometry = QApplication::desktop()->screenGeometry();
+    portrait = screenGeometry.width() < screenGeometry.height();
+    delete centralWidget();
+    setupUi();
+    int current = musicTable->currentRow();
+    playlistChanged(0);
+    musicTable->selectRow(current);
+}
+
 
 void MainWindow::addFiles()
 {
@@ -152,7 +163,7 @@ void MainWindow::addFolder()
 void MainWindow::addUrl()
 {
 #ifdef AVOID_INPUT_DIALOG
-    QString url = "http://war.str3am.com:7970";
+    QString url = "http://streams.bigvibez.com:7000/listen.pls";
 #else
     QString url = QInputDialog::getText(this, "Get URL", "Please type in the stream URL");
 #endif
@@ -654,7 +665,7 @@ void MainWindow::setupMenus()
 void MainWindow::setupUi()
 {
     QToolBar *bar = new QToolBar;
-    bool flip = settings.value("uiflipped", false).toBool();
+    bool flip = !portrait;
 
     if(!flip) bar->setOrientation(Qt::Vertical);
     bar->setStyleSheet("padding:7px");
@@ -1035,15 +1046,9 @@ void MainWindow::downSelected()
 
 void MainWindow::showOptions ()
 {
-    bool flip = settings.value("uiflipped", false).toBool();
     OptionDialog* dlg = new OptionDialog (this, settings);
     dlg->exec();
     delete dlg;
-    if (flip != settings.value("uiflipped", false).toBool())
-    {
-        delete centralWidget();
-        setupUi ();
-    }
     setOrientation ();
     if (headers != settings.value("headers", QStringList ()).toStringList())
     {

@@ -1,3 +1,9 @@
+tomamp (0.2.1-maemo2) unstable; urgency=low
+
+  * Icon fix
+
+ -- Tamas Marki <tmarki@gmail.com>  Tue, 30 Aug 2010 18:50:00 +0200
+
 tomamp (0.2.1-maemo1) unstable; urgency=low
 
   * New application icon

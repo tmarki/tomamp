@@ -113,6 +113,7 @@ private slots:
     void upSelected();
     void downSelected();
     void enqueueSelected();
+    void orientationChanged();
 
 protected:
     void contextMenuEvent (QContextMenuEvent*e);
@@ -171,6 +172,7 @@ private:
     QList<int>  shuffleList;
     int lastPlayed;
     bool isPlaying;
+    bool portrait;
 };
 
 #endif

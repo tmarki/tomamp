@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui phonon
+QT       += core gui phonon network
 
 maemo5 { QT += maemo5 }
 
