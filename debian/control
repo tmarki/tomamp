@@ -4,7 +4,7 @@ Priority: extra
 Maintainer: Tamas Marki <tmarki@gmail.com>
 Build-Depends: debhelper (>= 5), libqt4-dev (>= 4.5.0)
 Standards-Version: 3.8.0
-Homepage: http://tmarki.com/wp/tomamp
+Homepage: http://talk.maemo.org/showthread.php?t=60089
 XSBC-Bugtracker: mailto:tmarki@gmail.com
 
 Package: tomamp
