@@ -1,3 +1,11 @@
+tomamp (0.2.1-maemo1) unstable; urgency=low
+
+  * New application icon
+  * Bugfixes
+
+ -- Tamas Marki <tmarki@gmail.com>  Tue, 30 Aug 2010 17:44:07 +0200
+
+
 tomamp (0.2-maemo1) unstable; urgency=low
 
   * Swappable toolbars
