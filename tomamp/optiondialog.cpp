@@ -20,7 +20,7 @@ OptionDialog::~OptionDialog ()
     foreach (QObject* child, children())
     {
         QCheckBox* cb = qobject_cast<QCheckBox*>(child);
-        if (cb && cb->isChecked ())
+        if (cb && cb->isChecked () && availableHeaders.indexOf(cb->text()) >= 0)
         {
             h << cb->text ();
         }
@@ -53,9 +53,10 @@ void OptionDialog::setupUi()
     sub->addWidget(lab);
     headerLayout = new QVBoxLayout;
     QStringList headers = settings.value ("headers", QStringList ()).toStringList();
-    qDebug () << "Available headers: " << availableHeaders;
+    if (!headers.size())
+        headers = availableHeaders.mid(0, 3);
     foreach (QString str, availableHeaders)
-    {\
+    {
         QHBoxLayout *cont = new QHBoxLayout;
         QCheckBox* box = new QCheckBox (str);
         if (headers.indexOf(str) >= 0)

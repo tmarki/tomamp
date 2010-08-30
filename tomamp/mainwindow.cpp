@@ -106,7 +106,7 @@ void MainWindow::addFiles()
     QString ext = "*." + plman.allowedExt().join(" *.");
     ext = "Music files (" + ext + ");;Playlists (*.m3u *.pls)";
     QStringList files = QFileDialog::getOpenFileNames(this, tr("Select Files To Add"),
-                                                      folder, ext, 0, QFileDialog::DontUseNativeDialog);
+                                                      folder, ext);
 
     if (files.isEmpty())
         return;
@@ -166,7 +166,7 @@ void MainWindow::addUrl()
 
 void MainWindow::about()
 {
-    QMessageBox::information(this, tr("About TomAmp v0.2"),
+    QMessageBox::information(this, tr("About TomAmp v0.2.1"),
         tr("TomAmp is a simple playlist-based music player.\n\n"
         "(c) 2010 Tamas Marki <tmarki@gmail.com>\n\n"
         "Please send comments and bug reports to the above e-mail address.\n\n"

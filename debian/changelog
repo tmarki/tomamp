@@ -1,3 +1,25 @@
+tomamp (0.2.1-maemo1) unstable; urgency=low
+
+  * New application icon
+  * Bugfixes
+
+ -- Tamas Marki <tmarki@gmail.com>  Tue, 30 Aug 2010 17:44:07 +0200
+
+
+tomamp (0.2-maemo1) unstable; urgency=low
+
+  * Swappable toolbars
+  * Lots of new file formats supported
+  * Auto/landscape/portrait orientation in Maemo 5
+  * Change column order and hide columns
+  * Control column
+  * Enqueue song feature
+  * Playlist controls (up, down, remove)
+  * Options dialog
+  
+
+ -- Tamas Marki <tmarki@gmail.com>  Tue, 20 Aug 2010 23:08:07 +0200
+
 tomamp (0.1-maemo2) unstable; urgency=low
 
   * Package fix again :(
